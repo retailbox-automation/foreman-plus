@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Концепт-панель · All Things Agentic</title>
+<style>
+  :root{
+    --bg:#F6F5F1; --card:#FFFFFF; --ink:#20242E; --muted:#6B7280;
+    --gold:#8A5E0B; --gold-bg:#FBF3E2; --ok:#1E8A5E; --ok-bg:#E7F5EE;
+    --bad:#BE3D39; --bad-bg:#FBEAE9; --line:#E7E4DC; --accent:#3B4A9F;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  body{background:var(--bg); color:var(--ink); font:15px/1.55 -apple-system,"SF Pro Text",Segoe UI,Roboto,sans-serif; padding:36px 20px 80px}
+  .wrap{max-width:1060px; margin:0 auto}
+  h1{font-size:26px; letter-spacing:-.02em}
+  .sub{color:var(--muted); margin:6px 0 26px; font-size:14px}
+  .sub b{color:var(--ink)}
+  table{width:100%; border-collapse:collapse; background:var(--card); border-radius:12px; overflow:hidden; box-shadow:0 1px 4px rgba(32,36,46,.07); font-size:14px}
+  th,td{padding:10px 14px; text-align:left; border-bottom:1px solid var(--line)}
+  th{background:#FBFAF7; color:var(--muted); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:.05em}
+  tr:last-child td{border-bottom:none}
+  .num{font-variant-numeric:tabular-nums; font-weight:600}
+  .badge{display:inline-block; padding:2px 9px; border-radius:99px; font-size:12px; font-weight:600}
+  .b-win{background:var(--gold-bg); color:var(--gold)}
+  .b-ok{background:var(--ok-bg); color:var(--ok)}
+  .b-warn{background:#FDF0E3; color:#A05A1B}
+  .b-bad{background:var(--bad-bg); color:var(--bad)}
+  h2{font-size:19px; margin:38px 0 14px; letter-spacing:-.01em}
+  .card{background:var(--card); border-radius:14px; padding:22px 24px; margin-bottom:16px; box-shadow:0 1px 4px rgba(32,36,46,.07)}
+  .card.winner{outline:2px solid var(--gold); outline-offset:-2px}
+  .card h3{font-size:17px; display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+  .oneliner{color:var(--muted); font-style:italic; margin:6px 0 12px}
+  .row{margin:9px 0}
+  .lbl{display:inline-block; min-width:118px; color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.05em; font-weight:600; vertical-align:top}
+  .val{display:inline-block; width:calc(100% - 130px); vertical-align:top}
+  .wow{background:#F4F6FD; border-left:3px solid var(--accent); padding:10px 14px; border-radius:0 8px 8px 0; margin:10px 0}
+  .flaw{background:var(--bad-bg); border-left:3px solid var(--bad); padding:10px 14px; border-radius:0 8px 8px 0; margin:10px 0}
+  .plus{background:var(--ok-bg); border-left:3px solid var(--ok); padding:10px 14px; border-radius:0 8px 8px 0; margin:10px 0}
+  .sys{background:var(--card); border:1px dashed var(--gold); border-radius:14px; padding:20px 24px; margin:20px 0}
+  .reco{background:var(--gold-bg); border-radius:14px; padding:22px 24px; margin:22px 0}
+  .reco h2{margin-top:0}
+  ul{padding-left:20px} li{margin:5px 0}
+  .small{font-size:13px; color:var(--muted)}
+  @media (max-width:700px){ .lbl{min-width:100%} .val{width:100%} th,td{padding:8px 8px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Концепт-панель — ставка на Grand Prize $50k</h1>
+  <div class="sub">All Things Agentic (Google) · дедлайн <b>31.08 17:00 PDT</b> · осталось <b>13 дней</b> · метод: 4 генератора × 2 концепта → 3 адверсарных судьи (2× sonnet + opus-high), rubric 40/30/30 · 18.08.2026</div>
+
+  <table>
+    <tr><th>#</th><th>Концепт</th><th>Суть в одну строку</th><th>Скор</th><th>Реализуемость 13д</th><th>Главный риск</th></tr>
+    <tr><td>🥇</td><td><b>Foreman</b> <span class="badge b-win">№1 у всех 3 судей</span></td><td>фото+голос техника → флот сам ценит и шлёт квоту</td><td class="num">4.12</td><td><span class="badge b-warn">3.0 — спайк день 1-2</span></td><td>мультимодал + OAuth с нуля</td></tr>
+    <tr><td>2</td><td>Handoff</td><td>транскрипт → Calendar/CRM/письма с верифаером</td><td class="num">3.75</td><td><span class="badge b-ok">4.0</span></td><td><span class="badge b-bad">recycled = FleetMemory</span></td></tr>
+    <tr><td>3</td><td>DeskZero</td><td>чеки/инвойсы → бухгалтерия автономно</td><td class="num">3.60</td><td><span class="badge b-ok">4.0</span></td><td>затоптанный жанр (Innovation 40% ↓)</td></tr>
+    <tr><td>4</td><td>Baton</td><td>post-close revenue-ops эстафета 5 сервисов</td><td class="num">3.60</td><td><span class="badge b-warn">2–3.5</span></td><td>утонем в деплой-механике</td></tr>
+    <tr><td>5</td><td>ShelfSense</td><td>инвентарь ритейлера, «невидимый COO»</td><td class="num">3.47</td><td><span class="badge b-warn">2–3.5</span></td><td>полностью синтетический мир</td></tr>
+    <tr><td>6</td><td>PermitPilot</td><td>муниципальные разрешения без звонков в мэрию</td><td class="num">3.35</td><td><span class="badge b-bad">2.0</span></td><td>гос-порталы: антибот + юр. серость</td></tr>
+    <tr><td>7</td><td>Ledger</td><td>scope-drift против контракта, блок инвойса</td><td class="num">3.20</td><td><span class="badge b-ok">4.0</span></td><td>узкая аудитория; блокирует свой же мок</td></tr>
+    <tr><td>8</td><td>Aftermath</td><td>post-meeting рутина автономно</td><td class="num">3.03</td><td><span class="badge b-ok">4.2</span></td><td>конкурирует с Gemini in Meet (спонсор!)</td></tr>
+  </table>
+
+  <div class="sys">
+    <b>⚖️ Системный вывод opus-судьи (важнее скоров):</b> ни один из восьми <i>в текущем виде</i> Grand Prize не берёт. У всех — 4-5 агентов против <b>34-узловой топологии</b> эталонного победителя (SalesShortcut, ADK Hackathon), 5-6 Google-продуктов против 8-9, и у 5 из 8 — узнаваемая подпись нашего write-gate (recycled-риск с FleetMemory). ⇒ Победный ход: взять лучшее ядро и усилить по этим осям.
+  </div>
+
+  <div class="reco">
+    <h2>🎯 Рекомендация: Foreman+ (ядро Foreman, усиленное по осям критики)</h2>
+    <ul>
+      <li><b>Топология:</b> 10-15 специализированных агентов (intake / vision / scope / parts / pricing / travel / quote-composer / dispatcher / scheduler / follow-up / collections + verifier + observability), Sequential/Parallel/Loop узлы ADK — метрика топологии в README, как у SalesShortcut.</li>
+      <li><b>8-9 Google-продуктов:</b> Gemini 3.6 Flash (мультимодал) · ADK · Cloud Run · Cloud SQL+pgvector · Firestore · Pub/Sub · Maps API (стоимость выезда) · Calendar/Gmail API · Vertex embeddings + Gemma-классификатор (бонус-модели, +0.4).</li>
+      <li><b>Автономность дожата:</b> $-порог — квоты до $N уходят клиенту <b>без человека</b> (в демо видно «SENT» без клика), выше $N — один тап. Отвечает опус-судье («черновик для человека») и даёт governance-стори без копии FleetMemory-верифаера.</li>
+      <li><b>Наша правда:</b> field services — реальная клиентская вертикаль Retailbox в проде (полы, сантехника, HVAC) → Real-World Impact будет честным, с фактурой боли.</li>
+      <li><b>Риск-план:</b> verify-спайк день 1-2 (мультимодальный вызов фото+аудио → structured scope · ADK hello-fleet · деплой Cloud Run). Спайк падает → фоллбэк DeskZero на тех же рельсах.</li>
+    </ul>
+  </div>
+
+  <h2>🎯 Выбор ТРЕКА (категории сабмита) — решение Михаила</h2>
+  <div class="card">
+    <div class="row"><b>Механика (из правил, verified):</b> один проект = максимум <b>один</b> приз; категория выбирается полем в форме сабмита. Grand Prize $50k, по прецеденту ADK Hackathon, судится <i>поверх</i> треков — т.е. выбор категории почти не влияет на шансы на гранд, он определяет, <b>с кем нас сравнивают за «запасной» приз</b> и что судьи трека будут требовать показать. <span class="small">(Точную механику «гранд поверх категории» уточню в Discord/FAQ до сабмита — помечено в open questions.)</span></div>
+  </div>
+
+  <table>
+    <tr><th>Трек</th><th>Приз</th><th>Что судьи ждут (verbatim-эмфазы)</th><th>Конкуренция</th><th>Фит Foreman+</th></tr>
+    <tr>
+      <td><b>Startup Excellence</b> <span class="badge b-win">Recommended</span></td><td class="num">$20k ×1</td>
+      <td>Заявка от <b>incorporated</b> организации, corporate email обязателен. Бизнес-качество, продукт «на рынок»</td>
+      <td><span class="badge b-ok">низкая-средняя</span> — incorporation-фильтр отсекает студентов и хоббистов (большинство участников)</td>
+      <td><b>Идеален:</b> Retailbox incorporated + admin@ email ✓; стори «агентство с прод-клиентами в field services выводит продукт» — наша правда, недоступная 90% участников</td>
+    </tr>
+    <tr>
+      <td><b>Taskmaster</b> (альтернатива)</td><td class="num">$20k ×1</td>
+      <td>«Complete workflow, not just a chatbot… takes action… multi-step background workflows, sends the right info to the right places»</td>
+      <td><span class="badge b-bad">максимальная</span> — дефолтный трек для любого workflow-проекта</td>
+      <td>Дескриптивно Foreman+ дословно — но в самой большой толпе</td>
+    </tr>
+    <tr>
+      <td>Fortified Enterprise Fleet</td><td class="num">$20k ×1</td>
+      <td>Чеклист жёсткий: Agent Registry · Runtime & Memory Bank · Identity/Gateway/<b>Model Armor</b> · OTel-Observability — всё надо реально ПОКАЗАТЬ</td>
+      <td><span class="badge b-warn">средняя-высокая</span> — имя трека притягивает multi-agent команды</td>
+      <td>Архитектурно наш конёк (и после скана дёшев: safety-plugins/OTel готовые), но стори «один техник» менее enterprise; чеклист = обязательства, любой непоказанный пункт = провал по треку</td>
+    </tr>
+    <tr>
+      <td>Collaborative Partner</td><td class="num">$20k ×1</td>
+      <td>«Asks clarifying questions, guides step-by-step, captures feedback… stateful dialogue + RAG»</td>
+      <td><span class="badge b-warn">средняя</span></td>
+      <td><span class="badge b-bad">слабый</span> — Foreman+ намеренно НЕ диалоговый (автономность — наш тезис)</td>
+    </tr>
+    <tr>
+      <td>Individual / Hobbyist</td><td class="num">$10k ×2</td>
+      <td>Спец-категория поверх треков; критерии отбора («individual») verbatim не найдены — вероятно определяется по контрасту со Startup = НЕ-incorporated</td>
+      <td><span class="badge b-ok">ниже</span></td>
+      <td><span class="badge b-bad">имиджево вреден:</span> мы incorporated-агентство — «hobbyist» хоронит наш главный козырь (прод-опыт); возможно вообще не проходим по критерию</td>
+    </tr>
+    <tr>
+      <td>Best Architectural Design</td><td class="num">$5k ×2</td>
+      <td>«Decoupling, managing state and memory», production-minded design</td>
+      <td><span class="badge b-warn">средняя</span></td>
+      <td>Фит высокий, но платит в 4 раза меньше — fallback</td>
+    </tr>
+    <tr>
+      <td>Best Multimodal UX</td><td class="num">$5k ×2</td>
+      <td>Мультимодальный пользовательский опыт</td>
+      <td><span class="badge b-warn">средняя</span></td>
+      <td>Фото+голос+очки Mentra = сильный фит, но $5k и UX-полиш съест дни — fallback</td>
+    </tr>
+  </table>
+
+  <div class="reco">
+    <h2>Рекомендация по треку: Startup Excellence</h2>
+    <ul>
+      <li><b>Почему:</b> тот же номинал $20k, что у Taskmaster/Fleet, но <b>пул отфильтрован incorporation-требованием</b> — большинство из 4,862 участников (студенты, соло-хоббисты) туда физически не могут подать. Лучшее соотношение приз/конкуренция.</li>
+      <li><b>Наша стори непобиваемо честная:</b> инкорпорированное агентство, которое УЖЕ автоматизирует field-service бизнесы в проде, выводит продукт для своей вертикали. У хоббистов такого нарратива нет.</li>
+      <li><b>Ничего не теряем на Grand Prize:</b> гранд судится по общему rubric (40/30/30) поверх категорий. Fleet-качества (registry, guardrails/Model Armor, OTel-observability) всё равно строим — они дают Architecture-30% в любом треке, а после опенсорс-скана стоят дёшево.</li>
+      <li><b>Trade-off честно:</b> в Startup-треке средний конкурент сильнее (реальные стартапы с полишем). Если хочется максимального дескриптивного совпадения с текстом трека — Taskmaster, но там самая большая толпа.</li>
+      <li><b>Когда Fleet был бы правильным:</b> если повернуть стори с «один техник» на «флот на компанию с N техников + governance» и быть готовыми показать КАЖДЫЙ пункт чеклиста. Это +1-2 дня работы на Identity/Gateway-слой сверх плана.</li>
+    </ul>
+  </div>
+
+  <h2>Что изменил опенсорс-скан (18.08, детали — READY-MADE-SCAN-2026-08-18.md)</h2>
+  <div class="card">
+    <div class="plus"><b>Каркас наполовину готов (всё Apache-2.0/MIT, легально с disclosure):</b> ambient-expense-agent (Google) = наш $-порог auto-send/escalate + Terraform на Cloud Run/Pub/Sub/IAM · agents-cli = скелет проекта · Maps-тул встроен в ADK · safety-plugins = guardrails+Model Armor из коробки · React Flow = канвас live-графа · MCP Toolbox codelab = pgvector-прайсбук рецептом · OTel-инструментация ADK pip-пакетом → Cloud Trace.</div>
+    <div class="wow"><b>Ядро Foreman+ («фото+голос → структурированный скоуп») опенсорсом НЕ существует</b> — весь рынок это закрытые SaaS (QuoteIQ, SimplyWise, EstimationPro). Значит: наша новизна настоящая, а рыночный спрос доказан — готовый аргумент в Real-World Impact.</div>
+    <div class="flaw"><b>Юр-флаг:</b> репо прошлого Grand Prize (SalesShortcut) — без лицензии = all rights reserved. Архитектуру смотрим глазами, код не трогаем.</div>
+    <div class="row"><b>Устройства захвата (решение 18.08, детали — CAPTURE-DEVICES-2026-08-18.md):</b> intake device-agnostic (фото+аудио файлами из любого источника). <b>Телефон = основной путь</b> (кнопка в демо — судья пробует со своего); <b>Mentra = премиум-кадр видео ≤10 сек</b>, SDK-мост — stretch; <b>Google/Samsung Android XR glasses</b> — проверено live: релиз осенью 2026, в окно сабмита недоступны → идут строкой нарратива «ready for Android XR glasses shipping this fall» (alignment с роадмапом спонсора без зависимости). Очки обломались → всё с телефона, заявка не теряет ничего по существу.</div>
+  </div>
+
+  <h2>Все 8 концептов подробно</h2>
+
+  <div class="card winner">
+    <h3>🥇 #4 Foreman <span class="badge b-win">4.12 · №1 единогласно</span> <span class="badge b-warn">Feas 3.0</span></h3>
+    <div class="oneliner">Фото + голос техника с объекта → флот сам собирает, ценит и отправляет клиенту квоту — офис-админ не нужен.</div>
+    <div class="row"><span class="lbl">Стори</span><span class="val">Техник заканчивает осмотр → фото проблемы + 10-сек голосовая заметка. Vision-Estimator читает обе модальности <b>одним нативным вызовом Gemini</b> → структурированный скоуп работы. Параллельно: Pricer (semantic-поиск по прайсбуку — «leaking tank» находит нужный SKU без точных слов), Scheduler (реальный календарь). Quote-Writer собирает itemized-квоту, Verifier проверяет маржу/аномалии — и клиент получает цену, пока конкурент ещё едет в офис писать заметки.</span></div>
+    <div class="wow"><b>Wow первых 30 сек:</b> фото протекающего водогрея + голос «клиент хочет замену» → топология зажигается узел за узлом → готовая квота-PDF со слотом визита. Ни одной формы, ни одного напечатанного слова.</div>
+    <div class="plus"><b>За:</b> мультимодальность = честный Google-native дифференциатор (Claude/GPT-конкурентам недоступен) · сильнейший grandma-test · боль реальна (скорость квоты = выигранная работа) · field services = наша прод-вертикаль.</div>
+    <div class="flaw"><b>Против (судьи):</b> двойной незнакомый риск — мультимодал-вайринг + Calendar OAuth при нуле GCP; не заспайкано в день 1-2 → демо рушится целиком. Опус: «итог — черновик квоты, техник жмёт send» → автономность дожать $-порогом (фикс в Foreman+).</div>
+  </div>
+
+  <div class="card">
+    <h3>#7 Handoff <span class="badge b-ok">3.75</span> <span class="badge b-ok">Feas 4.0</span> <span class="badge b-bad">recycled-риск MAX</span></h3>
+    <div class="oneliner">Транскрипт встречи входит — реальные события Calendar, CRM-записи и письма выходят; верифаер ветирует всё, чего не было сказано.</div>
+    <div class="row"><span class="lbl">Стори</span><span class="val">Extractor тянет обязательства (даты, цены, деливераблы) → Scheduler создаёт реальный Calendar-холд, CRM-writer пишет запись, Emailer драфтит follow-up. Verifier сверяет каждую запись с транскриптом ДО коммита — выдуманная цена блокируется с красным REJECTED.</span></div>
+    <div class="wow"><b>Wow:</b> кликабельное событие в Calendar за секунды; четвёртое «обязательство» (цены не было в транскрипте) — верифаер краснеет, ничего не записано.</div>
+    <div class="flaw"><b>Против (все трое):</b> REJECTED-кульминация дословно повторяет FleetMemory — тот же автор, тот же месяц, публичный репо. Судья, видевший обе заявки, прочитает как перекраску.</div>
+  </div>
+
+  <div class="card">
+    <h3>#1 DeskZero <span class="badge b-ok">3.60</span> <span class="badge b-ok">Feas 4.0 — самый безопасный</span></h3>
+    <div class="oneliner">Любой чек/инвойс/накладная — принят, прочитан, сверен и заведён в бухгалтерию без единого ручного клика.</div>
+    <div class="row"><span class="lbl">Стори</span><span class="val">Intake (почта/аплоад) → Vision (Gemini читает кривое фото) → Reconciliation (векторный поиск дублей/аномалий по истории трат) → Ledger (сам заводит запись) → Escalation (решает: закрыть тихо или поднять человеку с обоснованием).</span></div>
+    <div class="wow"><b>Wow:</b> судья фоткает мятый чек → флот находит дубль трёхдневной давности и сам отклоняет повтор с объяснением.</div>
+    <div class="flaw"><b>Против:</b> самый насыщенный жанр из всех — «фото чека» есть на каждом мультимодальном хакатоне, это буквально Google-codelab с Document AI → Innovation (40% веса) проседает. Роль: <b>фоллбэк</b>, если спайк Foreman провалится.</div>
+  </div>
+
+  <div class="card">
+    <h3>#3 Baton <span class="badge b-ok">3.60</span> <span class="badge b-warn">Feas 2–3.5</span></h3>
+    <div class="oneliner">«Deal Won» → эстафета через 5 независимых Cloud Run агентов по A2A: контракт → инвойс → коллекшн → retention, governance-гейт на каждом денежном действии.</div>
+    <div class="row"><span class="lbl">Стори</span><span class="val">Closer (термы→контракт-драфт) ∥ Biller (инвойс+пейлинк) → Collector (сам ведёт цепочку напоминаний по срокам) → Retention (сигналы оттока + save-play). Verifier гейтит каждое внешнее действие: мелочь auto-approve, крупное — один тап человека. Не чатбот: человек с системой не разговаривает вообще.</span></div>
+    <div class="wow"><b>Wow:</b> одна кнопка «Deal Won — $18,000» → топология зажигается по узлам → кликабельный инвойс-линк за 20 сек.</div>
+    <div class="flaw"><b>Против (опус):</b> 5 сервисов + A2A + Pub/Sub при нуле GCP = вся стройка уйдёт в деплой-механику; демо-итог — мокнутый инвойс и неотправленный контракт, wow = анимация, а не проверяемый артефакт.</div>
+  </div>
+
+  <div class="card">
+    <h3>#6 ShelfSense <span class="badge b-ok">3.47</span> <span class="badge b-warn">Feas 2–3.5</span></h3>
+    <div class="oneliner">Запасы независимого ритейлера под управлением «невидимого COO»: сам прогнозирует, сам сравнивает поставщиков, сам заказывает — до того, как товар кончился.</div>
+    <div class="row"><span class="lbl">Стори</span><span class="val">Forecast (stockout за N дней по сезонности) → Sourcing (сравнение прайсов поставщиков) → Negotiation (письмо с торгом за объёмную скидку) → Budget-guardian (auto-approve в рамках лимита, иначе эскалация «подпишите одним кликом») → Tracking. Целился ровно в Fortified Enterprise Fleet трек (Identity/Gateway/Observability по учебнику).</span></div>
+    <div class="wow"><b>Wow:</b> полка корма визуально тает → красный «stock out in 4 days» → карточки трёх поставщиков → Negotiation печатает письмо на глазах → зелёный «auto-approved: $340, within policy».</div>
+    <div class="flaw"><b>Против (опус):</b> мир полностью синтетический (сгенерированные продажи + стаб-поставщики) — «симуляция бизнеса, а не система в нём»; судья на Q&A обесценит Utility (40%).</div>
+  </div>
+
+  <div class="card">
+    <h3>#5 PermitPilot <span class="badge b-warn">3.35</span> <span class="badge b-bad">Feas 2.0</span></h3>
+    <div class="oneliner">Флот проводит малый подряд через ад городских разрешений — от чертежа до инспекции — без единого звонка в мэрию.</div>
+    <div class="row"><span class="lbl">Стори</span><span class="val">Intake (адрес+тип работ голосом) → Jurisdiction (определяет коды/формы конкретного округа, парсит муниципальные сайты) → Filing (заполняет пакет) → Tracking (поллит портал) → Response (сам отвечает на «revision requested») → Scheduling (бронь инспекции).</span></div>
+    <div class="flaw"><b>Против:</b> слабейшая реализуемость — парсинг разношёрстных гос-сайтов за 13 дней при нуле GCP; реальная подача в гос-порталы = антибот + юридически серая зона ⇒ половина топологии в демо — декорация в staging-режиме.</div>
+  </div>
+
+  <div class="card">
+    <h3>#8 Ledger <span class="badge b-warn">3.20</span> <span class="badge b-ok">Feas 4.0</span></h3>
+    <div class="oneliner">Следит за дрейфом часов/скоупа против контракта в реальном времени — и не алертит, а блокирует плохой инвойс и сам драфтит change-order.</div>
+    <div class="row"><span class="lbl">Стори</span><span class="val">Контракт + живой тайм-лог (Google Sheet без миграции) → Watcher ловит дрейф в момент появления → Guardian физически останавливает in-flight инвойс до подписи человеком → Drafter пишет change-order и сообщение клиенту голосом фаундера (few-shot).</span></div>
+    <div class="wow"><b>Wow:</b> метр скоупа ползёт за 100% на глазах → Guardian СТОПит инвойс красным блоком → готовое сообщение клиенту.</div>
+    <div class="flaw"><b>Против:</b> узкая аудитория (fixed-price фрилансеры — судья боль не узнает); «автономность» = блокировка собственного же мока, наружу не происходит ничего — слабейший autonomous execution в выборке.</div>
+  </div>
+
+  <div class="card">
+    <h3>#2 Aftermath <span class="badge b-bad">3.03 — худший</span> <span class="badge b-ok">Feas 4.2</span></h3>
+    <div class="oneliner">Звонок закончился — а календарь, письма и CRM уже обновлены, пока люди прощаются.</div>
+    <div class="row"><span class="lbl">Стори</span><span class="val">Двойник Handoff от другого генератора: транскрипт → извлечение договорённостей → исполнение через Workspace API с одним approve-гейтом на письмо.</span></div>
+    <div class="flaw"><b>Против:</b> конкурирует с шипнутым продуктом самого спонсора — Gemini в Meet уже делает follow-ups и action items («зачем это отдельный проект?»); топ-1 по затоптанности жанр (Otter/Fireflies/Fathom + сто клонов); внутренний дубль #7.</div>
+  </div>
+
+  <p class="small">Источники: workflow wf_f0814b2c (4 генератора + 3 судьи, 1.36M токенов) · rubric и паттерны победителей — docs/PLAYBOOK.md · машиночитаемая сводка — docs/CONCEPT-PANEL-2026-08-18.md</p>
+</div>
+</body>
+</html>
