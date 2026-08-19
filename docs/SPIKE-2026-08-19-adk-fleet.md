@@ -18,7 +18,13 @@
 - `GOOGLE_API_KEY` обязателен (ADK читает его, не `GEMINI_API_KEY`) + `GOOGLE_GENAI_USE_VERTEXAI=FALSE`.
 - Наш собственный слой (bi-temporal память + write-gate) будет ЖИТЬ РЯДОМ в той же Cloud SQL: ADK-таблицы = session state, наши таблицы = долгая память с гейтом. Конфликта схем нет.
 
-## Осталось в спайке (cloud-нога) — гейт: gcloud re-auth admin@
-- Cloud SQL for PostgreSQL: тот же скрипт с `db_url` на Cloud SQL (public IP / connector).
-- Cloud Run: обернуть foreman в `adk api_server` / FastAPI, задеплоить hello-endpoint.
-- Billing: квота GRANTED письмом 18.08 11:02 ET → привязать billing account к `foreman-hackathon`.
+## Cloud-нога (19.08, после re-auth): Cloud Run PASSED
+- ✅ Биллинг привязан (`014E5C-0C7AB8-05E6C6`), `billingEnabled: true` — квота 18.08 сработала.
+- ✅ **Cloud Run деплой:** `adk deploy cloud_run … foreman_app` → https://foreman-hello-112293816563.us-central1.run.app (закрыт auth, max-instances=1). Живая проба `/run` с identity token: foreman → `transfer_to_agent` → estimator вернул JSON — флот работает В ОБЛАКЕ на gemini-3.6-flash.
+- ⏳ Cloud SQL `foreman-pg` (POSTGRES_16, db-f1-micro, us-central1, пароль в Keychain `foreman-cloudsql-pg`): PENDING_CREATE → перевесить `--session_service_uri` и повторить restart-recall тест.
+
+## Cloud-гочи (кровью)
+1. 🔴 **`adk deploy cloud_run` возвращает exit 0 при УПАВШЕМ деплое** — правду смотреть в логе («Deployment failed»), zeabur-класс.
+2. **Новым GCP-проектам дефолтный compute SA не даёт прав Cloud Build** → `PERMISSION_DENIED ... could not resolve source`. Фикс: `gcloud projects add-iam-policy-binding … --member=serviceAccount:<N>-compute@developer.gserviceaccount.com --role=roles/cloudbuild.builds.builder`.
+3. 🔴 **Ключ формата `AQ.…` (bound-SA) игнорирует `GOOGLE_GENAI_USE_VERTEXAI=FALSE`** — genai ходит Vertex-поверхностью: сначала 403 `aiplatform.googleapis.com` disabled (включить API), затем 404 «gemini-3.6-flash not found in us-central1» — регион берётся из метаданных Cloud Run. Фикс: env **`GOOGLE_CLOUD_LOCATION=global`** (локально работало именно потому, что дефолт-локация была global).
+4. Каждый `gcloud run services update` = новая ревизия = **in-memory сессии стёрты** («Session not found») — лишний аргумент за DatabaseSessionService.
