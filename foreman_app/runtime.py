@@ -19,12 +19,18 @@ FLEET = [
 
 _lock: asyncio.Lock | None = None
 _env: tuple[MemoryStore, WriteGate] | None = None
+_loop: asyncio.AbstractEventLoop | None = None
 
 
 async def get_env() -> tuple[MemoryStore, WriteGate]:
-    global _lock, _env
-    if _lock is None:
-        _lock = asyncio.Lock()
+    """The pool and lock are bound to the event loop that created them; if we
+    are called from a different loop (test runners, re-created server loops),
+    rebuild instead of crashing on cross-loop reuse."""
+    global _lock, _env, _loop
+    loop = asyncio.get_running_loop()
+    if _loop is not loop:
+        _lock, _env, _loop = asyncio.Lock(), None, loop
+    assert _lock is not None
     async with _lock:
         if _env is None:
             pool = await create_pool(os.environ["FOREMAN_DB_URL"])

@@ -32,7 +32,10 @@ CREATE TABLE IF NOT EXISTS memory_facts (
     gate_entry_id bigint REFERENCES gate_journal(id)
 );
 
-CREATE INDEX IF NOT EXISTS memory_facts_subject_idx
+-- exactly ONE live fact per (subject, predicate): the bi-temporal invariant,
+-- enforced by the database, not just by application logic
+CREATE UNIQUE INDEX IF NOT EXISTS memory_facts_one_current_idx
     ON memory_facts (subject, predicate) WHERE valid_to IS NULL;
+DROP INDEX IF EXISTS memory_facts_subject_idx;
 CREATE INDEX IF NOT EXISTS gate_journal_subject_idx
     ON gate_journal ((proposal ->> 'subject'));
