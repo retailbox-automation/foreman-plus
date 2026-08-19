@@ -1,4 +1,4 @@
-google-adk[db]==2.7.1
+google-adk[db,gcp,otel-gcp]==2.7.1
 asyncpg
 greenlet
 google-cloud-firestore

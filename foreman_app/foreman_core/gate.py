@@ -12,7 +12,11 @@ import json
 from dataclasses import dataclass
 from typing import Any, Protocol
 
+from opentelemetry import trace
+
 from .memory import MemoryStore
+
+_tracer = trace.get_tracer("foreman.memory")
 
 
 @dataclass
@@ -61,7 +65,15 @@ class WriteGate:
         self.max_predicates_per_subject = max_predicates_per_subject
 
     async def submit(self, proposal: Proposal) -> GateEntry:
-        entry = await self._submit(proposal)
+        # our own span nests under ADK's invoke_agent/execute_tool spans, so one
+        # Cloud Trace waterfall reads: intake -> LLM -> gate -> DB
+        with _tracer.start_as_current_span("write_gate.submit") as span:
+            span.set_attribute("foreman.subject", proposal.subject)
+            span.set_attribute("foreman.predicate", proposal.predicate)
+            span.set_attribute("foreman.agent", proposal.proposed_by)
+            entry = await self._submit(proposal)
+            span.set_attribute("foreman.verdict", entry.verdict)
+            span.set_attribute("foreman.gate_entry_id", entry.id)
         # best-effort live feed; the journal in Postgres is the system of record
         if self.activity is not None:
             try:
