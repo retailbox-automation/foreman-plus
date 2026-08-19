@@ -1,3 +1,4 @@
 google-adk[db]==2.7.1
 asyncpg
 greenlet
+google-cloud-firestore

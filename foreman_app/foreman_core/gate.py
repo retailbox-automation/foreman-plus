@@ -49,16 +49,36 @@ class WriteGate:
         store: MemoryStore,
         verifier: Verifier,
         embedder=None,
+        activity=None,
         max_value_bytes: int = 4096,
         max_predicates_per_subject: int = 64,
     ):
         self.store = store
         self.verifier = verifier
         self.embedder = embedder
+        self.activity = activity
         self.max_value_bytes = max_value_bytes
         self.max_predicates_per_subject = max_predicates_per_subject
 
     async def submit(self, proposal: Proposal) -> GateEntry:
+        entry = await self._submit(proposal)
+        # best-effort live feed; the journal in Postgres is the system of record
+        if self.activity is not None:
+            try:
+                await self.activity.publish({
+                    "type": "gate_decision",
+                    "agent": proposal.proposed_by,
+                    "subject": proposal.subject,
+                    "predicate": proposal.predicate,
+                    "verdict": entry.verdict,
+                    "reason": entry.reason,
+                    "gate_entry_id": entry.id,
+                })
+            except Exception:
+                pass
+        return entry
+
+    async def _submit(self, proposal: Proposal) -> GateEntry:
         entry_id = await self._journal_open(proposal)
 
         # identity check first — unregistered agents never reach the LLM verifier

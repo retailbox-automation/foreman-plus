@@ -47,5 +47,13 @@ async def get_env() -> tuple[MemoryStore, WriteGate]:
             store = MemoryStore(pool)
             for name, desc in FLEET:
                 await store.register_agent(name, version="0.2", description=desc)
-            _env = (store, WriteGate(store, GeminiVerifier(), embedder=get_embedder()))
+            activity = None
+            try:  # live dashboard feed; absent creds must not break the fleet
+                from .foreman_core.activity import FirestoreActivityFeed
+                activity = FirestoreActivityFeed(
+                    project=os.environ.get("GOOGLE_CLOUD_PROJECT", "foreman-hackathon"))
+            except Exception:
+                pass
+            _env = (store, WriteGate(store, GeminiVerifier(),
+                                     embedder=get_embedder(), activity=activity))
     return _env
