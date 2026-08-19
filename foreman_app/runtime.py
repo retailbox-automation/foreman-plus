@@ -8,6 +8,7 @@ import asyncio
 import os
 
 from .foreman_core.db import apply_schema, create_pool
+from .foreman_core.embedder import GeminiEmbedder
 from .foreman_core.gate import WriteGate
 from .foreman_core.memory import MemoryStore
 from .foreman_core.verifier import GeminiVerifier
@@ -20,6 +21,14 @@ FLEET = [
 _lock: asyncio.Lock | None = None
 _env: tuple[MemoryStore, WriteGate] | None = None
 _loop: asyncio.AbstractEventLoop | None = None
+_embedder: GeminiEmbedder | None = None
+
+
+def get_embedder() -> GeminiEmbedder:
+    global _embedder
+    if _embedder is None:
+        _embedder = GeminiEmbedder()  # lazy: needs GOOGLE_API_KEY at call time
+    return _embedder
 
 
 async def get_env() -> tuple[MemoryStore, WriteGate]:
@@ -38,5 +47,5 @@ async def get_env() -> tuple[MemoryStore, WriteGate]:
             store = MemoryStore(pool)
             for name, desc in FLEET:
                 await store.register_agent(name, version="0.2", description=desc)
-            _env = (store, WriteGate(store, GeminiVerifier()))
+            _env = (store, WriteGate(store, GeminiVerifier(), embedder=get_embedder()))
     return _env

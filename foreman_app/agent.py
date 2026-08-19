@@ -2,7 +2,7 @@
 from google.adk.agents import Agent
 
 from . import runtime
-from .foreman_core.tools import make_memory_tools
+from .foreman_core.tools import make_memory_tools, make_recall_tool
 
 MODEL = "gemini-3.7-flash"
 
@@ -21,7 +21,14 @@ def _tools_for(agent_name: str):
         _, search = make_memory_tools(agent_name, store, gate)
         return await search(subject=subject)
 
-    return [record_fact, lookup_facts]
+    async def recall_similar(query: str) -> dict:
+        """Semantically search the WHOLE fleet memory across all past jobs —
+        similar equipment, similar issues, past estimates."""
+        store, _ = await runtime.get_env()
+        recall = make_recall_tool(store, runtime.get_embedder())
+        return await recall(query=query)
+
+    return [record_fact, lookup_facts, recall_similar]
 
 
 estimator = Agent(
@@ -31,9 +38,12 @@ estimator = Agent(
     instruction=(
         "You are the estimator agent of a repair fleet. When asked about a job "
         '"Job <ID>", FIRST call lookup_facts with subject "job:<ID>" to read what '
-        "is known. Then reply with a one-line JSON estimate: "
-        '{"job": str, "hours": int, "parts": [str]} and record it via record_fact '
-        '(subject "job:<ID>", predicate "estimate", value = that JSON as a string).'
+        "is known, and call recall_similar with a short description of the issue "
+        "to check whether the fleet has seen similar equipment or problems on "
+        "past jobs — use consistent past estimates as a sanity anchor. Then reply "
+        'with a one-line JSON estimate: {"job": str, "hours": int, "parts": [str]} '
+        'and record it via record_fact (subject "job:<ID>", predicate "estimate", '
+        "value = that JSON as a string)."
     ),
     tools=_tools_for("estimator"),
 )

@@ -48,11 +48,13 @@ class WriteGate:
         self,
         store: MemoryStore,
         verifier: Verifier,
+        embedder=None,
         max_value_bytes: int = 4096,
         max_predicates_per_subject: int = 64,
     ):
         self.store = store
         self.verifier = verifier
+        self.embedder = embedder
         self.max_value_bytes = max_value_bytes
         self.max_predicates_per_subject = max_predicates_per_subject
 
@@ -108,11 +110,23 @@ class WriteGate:
                                       conn=conn)
             return GateEntry(entry_id, "rejected", verdict.reason)
 
+        embedding = await self._embed_safe(proposal)
         fact_id = await self.store.apply_approved(
             proposal.subject, proposal.predicate, proposal.object,
-            proposal.proposed_by, entry_id, verdict.reason, verdict.model, conn=conn,
+            proposal.proposed_by, entry_id, verdict.reason, verdict.model,
+            embedding=embedding, conn=conn,
         )
         return GateEntry(entry_id, "approved", verdict.reason, fact_id)
+
+    async def _embed_safe(self, proposal: Proposal) -> list[float] | None:
+        """Best-effort: a broken embedder must not block an approved write."""
+        if self.embedder is None:
+            return None
+        text = f"{proposal.subject} {proposal.predicate}: {proposal.object.get('value')}"
+        try:
+            return await self.embedder.embed(text, kind="document")
+        except Exception:
+            return None
 
     async def _journal_open(self, p: Proposal) -> int:
         async with self.store.pool.acquire() as conn:

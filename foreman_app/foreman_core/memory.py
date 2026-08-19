@@ -5,6 +5,11 @@ from typing import Any
 import asyncpg
 
 
+def _vec_text(v: list[float]) -> str:
+    """pgvector text literal — avoids a codec dependency (cast with ::vector)."""
+    return "[" + ",".join(f"{x:.7g}" for x in v) + "]"
+
+
 class MemoryStore:
     def __init__(self, pool: asyncpg.Pool):
         self.pool = pool
@@ -78,10 +83,38 @@ class MemoryStore:
                 )
         return [dict(r) for r in rows]
 
+    async def recall(
+        self, query_embedding: list[float], top_k: int = 5,
+        subject_prefix: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Nearest current facts by cosine similarity (superseded rows excluded)."""
+        qvec = _vec_text(query_embedding)
+        async with self.pool.acquire() as conn:
+            if subject_prefix is None:
+                rows = await conn.fetch(
+                    """SELECT subject, predicate, object, source_agent,
+                              1 - (embedding <=> $1::vector) AS score
+                       FROM memory_facts
+                       WHERE valid_to IS NULL AND embedding IS NOT NULL
+                       ORDER BY embedding <=> $1::vector LIMIT $2""",
+                    qvec, top_k,
+                )
+            else:
+                rows = await conn.fetch(
+                    """SELECT subject, predicate, object, source_agent,
+                              1 - (embedding <=> $1::vector) AS score
+                       FROM memory_facts
+                       WHERE valid_to IS NULL AND embedding IS NOT NULL
+                         AND subject LIKE $3
+                       ORDER BY embedding <=> $1::vector LIMIT $2""",
+                    qvec, top_k, subject_prefix + "%",
+                )
+        return [dict(r) for r in rows]
+
     async def apply_approved(
         self, subject: str, predicate: str, obj: dict, source_agent: str,
         entry_id: int, reason: str, model: str | None,
-        conn=None,
+        embedding: list[float] | None = None, conn=None,
     ) -> int:
         """Close the journal entry AND write the fact in ONE transaction.
 
@@ -90,14 +123,17 @@ class MemoryStore:
         """
         if conn is not None:
             return await self._apply_approved_on(
-                conn, subject, predicate, obj, source_agent, entry_id, reason, model)
+                conn, subject, predicate, obj, source_agent, entry_id, reason,
+                model, embedding)
         async with self.pool.acquire() as c:
             return await self._apply_approved_on(
-                c, subject, predicate, obj, source_agent, entry_id, reason, model)
+                c, subject, predicate, obj, source_agent, entry_id, reason,
+                model, embedding)
 
     async def _apply_approved_on(
         self, conn, subject: str, predicate: str, obj: dict,
         source_agent: str, entry_id: int, reason: str, model: str | None,
+        embedding: list[float] | None = None,
     ) -> int:
         async with conn.transaction():
             closed = await conn.fetchval(
@@ -126,10 +162,12 @@ class MemoryStore:
             new_id = await conn.fetchval(
                 """INSERT INTO memory_facts
                      (subject, predicate, object, source_agent, gate_entry_id,
-                      valid_from, ingested_at)
-                   VALUES ($1, $2, $3, $4, $5, clock_timestamp(), clock_timestamp())
+                      valid_from, ingested_at, embedding)
+                   VALUES ($1, $2, $3, $4, $5, clock_timestamp(), clock_timestamp(),
+                           $6::vector)
                    RETURNING id""",
                 subject, predicate, obj, source_agent, entry_id,
+                _vec_text(embedding) if embedding is not None else None,
             )
             if prev_id is not None:
                 await conn.execute(

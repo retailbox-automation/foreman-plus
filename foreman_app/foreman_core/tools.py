@@ -5,6 +5,26 @@ from .gate import Proposal, WriteGate
 from .memory import MemoryStore
 
 
+def make_recall_tool(store: MemoryStore, embedder):
+    """Semantic recall across the WHOLE fleet memory (current facts only)."""
+
+    async def memory_recall(query: str) -> dict:
+        """Semantically search shared fleet memory across all jobs. Returns the
+        most similar current facts with their subjects and similarity scores."""
+        try:
+            qvec = await embedder.embed(query, kind="query")
+            hits = await store.recall(qvec, top_k=5)
+            return {"hits": [
+                {"subject": h["subject"], "predicate": h["predicate"],
+                 "value": h["object"].get("value"), "score": round(h["score"], 3)}
+                for h in hits
+            ]}
+        except Exception as e:
+            return {"hits": [], "error": str(e)}
+
+    return memory_recall
+
+
 def make_memory_tools(agent_name: str, store: MemoryStore, gate: WriteGate):
     """Returns (memory_write, memory_search) bound to one agent's identity."""
 

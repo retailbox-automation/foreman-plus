@@ -1,5 +1,7 @@
 -- Foreman+ core: agent registry, bi-temporal shared memory, write-gate journal.
 
+CREATE EXTENSION IF NOT EXISTS vector;
+
 CREATE TABLE IF NOT EXISTS agents (
     name          text PRIMARY KEY,
     version       text NOT NULL,
@@ -37,5 +39,11 @@ CREATE TABLE IF NOT EXISTS memory_facts (
 CREATE UNIQUE INDEX IF NOT EXISTS memory_facts_one_current_idx
     ON memory_facts (subject, predicate) WHERE valid_to IS NULL;
 DROP INDEX IF EXISTS memory_facts_subject_idx;
+
+-- semantic recall: 768 dims pinned to gemini-embedding-001 with
+-- output_dimensionality=768 (MUST be set on every embed call)
+ALTER TABLE memory_facts ADD COLUMN IF NOT EXISTS embedding vector(768);
+CREATE INDEX IF NOT EXISTS memory_facts_embedding_idx
+    ON memory_facts USING hnsw (embedding vector_cosine_ops);
 CREATE INDEX IF NOT EXISTS gate_journal_subject_idx
     ON gate_journal ((proposal ->> 'subject'));
