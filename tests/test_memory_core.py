@@ -8,9 +8,9 @@ import datetime as dt
 import pytest
 import pytest_asyncio
 
-from foreman_core.db import create_pool, apply_schema
-from foreman_core.memory import MemoryStore
-from foreman_core.gate import WriteGate, Proposal, Verdict
+from foreman_app.foreman_core.db import create_pool, apply_schema
+from foreman_app.foreman_core.memory import MemoryStore
+from foreman_app.foreman_core.gate import WriteGate, Proposal, Verdict
 
 DB_URL = "postgresql://oskolamicheal@localhost:5432/foreman_core_test"
 

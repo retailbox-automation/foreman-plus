@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from foreman_core.gate import Proposal
-from foreman_core.verifier import GeminiVerifier
+from foreman_app.foreman_core.gate import Proposal
+from foreman_app.foreman_core.verifier import GeminiVerifier
 
 pytestmark = pytest.mark.integration
 
