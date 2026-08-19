@@ -7,7 +7,7 @@ from google.genai import types
 
 from .gate import Proposal, Verdict
 
-DEFAULT_MODEL = "gemini-3.6-flash"
+DEFAULT_MODEL = "gemini-3.7-flash"
 
 _INSTRUCTION = """You are the write-gate verifier of a shared agent memory.
 You receive DATA: one proposed fact and the existing facts for the same subject.

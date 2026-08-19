@@ -4,7 +4,7 @@ from google.adk.agents import Agent
 from . import runtime
 from .foreman_core.tools import make_memory_tools
 
-MODEL = "gemini-3.6-flash"
+MODEL = "gemini-3.7-flash"
 
 
 def _tools_for(agent_name: str):
