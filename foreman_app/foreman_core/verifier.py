@@ -1,11 +1,10 @@
 """LLM verifier for the write-gate: judges proposals against existing facts."""
 import json
-import os
 
-from google import genai
 from google.genai import types
 
 from .gate import Proposal, Verdict
+from .genai_client import make_client
 
 DEFAULT_MODEL = "gemini-3.7-flash"
 
@@ -34,12 +33,7 @@ _SCHEMA = {
 class GeminiVerifier:
     def __init__(self, model: str = DEFAULT_MODEL):
         self.model = model
-        # vertexai=False is load-bearing: inside GCP the client auto-detects the
-        # Vertex surface (aiplatform), which our API key's restriction blocks.
-        self._client = genai.Client(
-            api_key=os.environ.get("GOOGLE_API_KEY") or os.environ["GEMINI_API_KEY"],
-            vertexai=False,
-        )
+        self._client = make_client()
 
     async def verify(self, proposal: Proposal, existing_facts: list[dict]) -> Verdict:
         payload = {

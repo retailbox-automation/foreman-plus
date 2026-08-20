@@ -15,8 +15,10 @@ for line in env_file.read_text().splitlines():
     if "=" in line and not line.startswith("#"):
         k, v = line.split("=", 1)
         os.environ.setdefault(k.strip(), v.strip())
-os.environ["GOOGLE_API_KEY"] = os.environ["GEMINI_API_KEY"]
-os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "FALSE"
+if os.environ.get("GOOGLE_GENAI_USE_VERTEXAI", "").lower() not in ("1", "true", "yes"):
+    # legacy key path (prepay-billed); Vertex mode uses ADC from .env instead
+    os.environ["GOOGLE_API_KEY"] = os.environ["GEMINI_API_KEY"]
+    os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "FALSE"
 os.environ["FOREMAN_DB_URL"] = "postgresql://oskolamicheal@localhost:5432/foreman_core_test"
 
 from google.adk.runners import Runner  # noqa: E402

@@ -11,3 +11,9 @@ __pycache__/
 *.pyc
 .venv/
 certs/
+CLAUDE.md
+docs/PLAYBOOK.md
+docs/CONCEPT-PANEL*
+docs/concept-panel*
+docs/CAPTURE-DEVICES*
+docs/READY-MADE-SCAN*
