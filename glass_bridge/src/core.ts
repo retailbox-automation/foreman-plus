@@ -3,7 +3,7 @@
  *  index.ts only maps SDK events onto these methods. */
 import { EchoGuard } from "./echo-guard.js";
 import { isBackchannel } from "./is-backchannel.js";
-import { matchCommand } from "./commands.js";
+import { matchCommand, matchesSleep, matchesWake } from "./commands.js";
 import { photoSizeLadder, type PhotoSize } from "./photo-size.js";
 import {
   addUtterance, buildRunPayload, jobReady, newJob, renderSpoken, setPhoto, type JobState,
@@ -12,7 +12,11 @@ import {
 /** The slice of AppSession the core touches (structural, for tests). */
 export interface GlassSession {
   audio: { speak: (text: string, opts?: Record<string, unknown>) => Promise<unknown> };
-  camera: { requestPhoto: (opts?: { size?: PhotoSize }) => Promise<{ buffer: Buffer; mimeType: string; size: number }> };
+  camera: {
+    requestPhoto: (opts?: { size?: PhotoSize; compress?: "none" | "medium" | "heavy" }) => Promise<{ buffer: Buffer; mimeType: string; size: number }>;
+    startManagedStream?: (opts?: { quality?: "720p" | "1080p" }) => Promise<{ hlsUrl: string; dashUrl?: string; previewUrl?: string }>;
+    stopManagedStream?: () => Promise<unknown>;
+  };
 }
 
 export interface FleetClient {
@@ -23,6 +27,8 @@ export interface FleetClient {
 export interface BrainClient {
   pushFrame(jpeg: Buffer): Promise<void>;
   ask(text: string): Promise<string>;
+  startStream?(hlsUrl: string): Promise<void>;
+  stopStream?(): Promise<void>;
 }
 
 export interface CoreOptions {
@@ -33,18 +39,30 @@ export interface CoreOptions {
   photoSize?: PhotoSize;
   /** Reassurance timers while the fleet runs (ms). Tests pass []. */
   reassureAfterMs?: number[];
+  /** Auto-sleep after this much silence while awake (default 3 min). */
+  awakeIdleMs?: number;
   log?: (msg: string) => void;
 }
 
 export class GlassIntakeCore {
   job: JobState = newJob();
+  /** Survives job rollover — /debug/photo.jpg and the brain's eyes. */
+  lastPhoto: { data: Buffer; mimeType: string; at: number } | null = null;
+  streamInfo: { hlsUrl: string; previewUrl?: string; startedAt: string } | null = null;
   private lastPhotoAt = 0;
   private submitting = false;
+  private startingStream = false;
+  /** Attention gate: asleep by default — the room is full of speech that is
+   *  not for us. Explicit commands and the camera button always work. */
+  awake = false;
+  private lastAwakeActivity = Date.now(); // NOT 0: a 0 epoch trips auto-sleep on the first utterance
+  private readonly awakeIdleMs: number;
   private readonly echoGuard = new EchoGuard();
   private readonly log: (msg: string) => void;
 
   constructor(private readonly o: CoreOptions) {
     this.log = o.log ?? ((m) => console.log(m));
+    this.awakeIdleMs = o.awakeIdleMs ?? 180_000;
   }
 
   /** photo_taken broadcast (system camera button = ONE shutter). */
@@ -53,6 +71,7 @@ export class GlassIntakeCore {
     if (Date.now() - this.lastPhotoAt <= 10_000) return; // dedupe vs requestPhoto
     this.lastPhotoAt = Date.now();
     setPhoto(this.job, Buffer.from(data), mime);
+    this.lastPhoto = { data: Buffer.from(data), mimeType: mime, at: Date.now() };
     this.log(`[photo] captured via photo_taken broadcast (${data.byteLength} bytes)`);
     await this.speak(session, "Photo captured.");
     this.shareFrameWithBrain();
@@ -71,7 +90,9 @@ export class GlassIntakeCore {
   }
 
   /** Final transcript. Returns what it did (for tests/logs). */
-  async onUtterance(session: GlassSession, text: string): Promise<"echo" | "photo" | "submit" | "reset" | "note" | "filler"> {
+  async onUtterance(
+    session: GlassSession, text: string,
+  ): Promise<"echo" | "photo" | "submit" | "reset" | "note" | "filler" | "asleep" | "woke" | "slept"> {
     const t = text.trim();
     if (!t) return "echo";
     if (this.echoGuard.isEcho(t)) return "echo";
@@ -80,14 +101,36 @@ export class GlassIntakeCore {
     // never wake the brain on them (live 25.08: every filler got a reply,
     // and TTS is serial → answers queued up as "it lags / doesn't answer").
     if (isBackchannel(t)) return "filler";
+
+    // Attention gate. The mic hears the whole room; while asleep we neither
+    // take notes nor answer — but explicit commands still work.
+    if (this.awake && Date.now() - this.lastAwakeActivity > this.awakeIdleMs) {
+      this.awake = false;
+      this.log("[gate] auto-sleep after idle");
+    }
+    if (matchesSleep(t)) {
+      if (this.awake) { this.awake = false; await this.speak(session, "Going quiet."); }
+      return "slept";
+    }
     const cmd = matchCommand(t);
+    if (!this.awake && matchesWake(t)) {
+      this.awake = true;
+      this.lastAwakeActivity = Date.now();
+      // A wake that carries a real command falls through to it below.
+      if (cmd === null) { await this.speak(session, "Listening."); return "woke"; }
+    }
+
     if (cmd === "photo") { await this.capturePhoto(session); return "photo"; }
     if (cmd === "submit") { await this.submit(session); return "submit"; }
+    if (cmd === "stream_on") { void this.startLiveView(session); return "note"; }
+    if (cmd === "stream_off") { void this.stopLiveView(session); return "note"; }
     if (cmd === "reset") {
       this.job = newJob();
       await this.speak(session, "Fresh job started.");
       return "reset";
     }
+    if (!this.awake) return "asleep";
+    this.lastAwakeActivity = Date.now();
     addUtterance(this.job, t);
     if (this.o.brain) await this.forwardToBrain(session, t);
     return "note";
@@ -99,8 +142,13 @@ export class GlassIntakeCore {
     for (let i = 0; i < attempts.length; i++) {
       const want = attempts[i];
       try {
-        const photo = await session.camera.requestPhoto(want ? { size: want } : undefined);
+        // compress:'medium' (SDK option, found in 2.1.29 d.ts) shrinks the
+        // transfer — live 25.08 the UNcompressed default timed out over BT
+        // and we fell to 640x480; compression keeps resolution instead.
+        const photo = await session.camera.requestPhoto(
+          want ? { size: want, compress: "medium" } : { compress: "medium" });
         setPhoto(this.job, photo.buffer, photo.mimeType);
+        this.lastPhoto = { data: photo.buffer, mimeType: photo.mimeType, at: Date.now() };
         this.lastPhotoAt = Date.now();
         this.log(`[photo] requestPhoto ok (${photo.size} bytes, size=${want ?? "default"})`);
         await this.speak(session, "Photo captured.");
@@ -146,6 +194,66 @@ export class GlassIntakeCore {
     }
   }
 
+  /** Managed stream (Mentra Cloud → Cloudflare HLS). "Live" from the SDK is
+   *  claimed before media actually flows (docs/2026-07-13-stream-404-research
+   *  in the glasses project), so the ONLY readiness signal we trust is the
+   *  HLS manifest itself answering with #EXTM3U. */
+  async startLiveView(session: GlassSession): Promise<boolean> {
+    if (!session.camera.startManagedStream) {
+      await this.speak(session, "Live view is not supported on this connection.");
+      return false;
+    }
+    if (this.streamInfo || this.startingStream) {
+      await this.speak(session, "Live view is already running.");
+      return false;
+    }
+    this.startingStream = true;
+    try {
+      await this.speak(session, "Starting live view.");
+      const urls = await session.camera.startManagedStream({ quality: "720p" });
+      this.log(`[stream] managed started, HLS: ${urls.hlsUrl}`);
+      const ready = await this.waitForManifest(urls.hlsUrl, 90_000);
+      if (!ready) {
+        this.log("[stream] HLS manifest never came up (the July NAT gotcha)");
+        await session.camera.stopManagedStream?.().catch(() => {});
+        await this.speak(session, "Live view did not come up. Photo mode still works.");
+        return false;
+      }
+      this.streamInfo = { hlsUrl: urls.hlsUrl, previewUrl: urls.previewUrl, startedAt: new Date().toISOString() };
+      if (this.o.brain?.startStream) {
+        await this.o.brain.startStream(urls.hlsUrl).catch((e) => this.log(`[stream] brain hookup failed: ${e}`));
+      }
+      await this.speak(session, "Live view is on. I can see what you see now.");
+      return true;
+    } catch (err) {
+      this.log(`[stream] start failed: ${String(err)}`);
+      await this.speak(session, "Live view failed to start.");
+      return false;
+    } finally {
+      this.startingStream = false;
+    }
+  }
+
+  async stopLiveView(session: GlassSession): Promise<void> {
+    try { await session.camera.stopManagedStream?.(); } catch { /* already down */ }
+    if (this.o.brain?.stopStream) await this.o.brain.stopStream().catch(() => {});
+    const was = this.streamInfo !== null;
+    this.streamInfo = null;
+    if (was) await this.speak(session, "Live view is off.");
+  }
+
+  private async waitForManifest(url: string, budgetMs: number): Promise<boolean> {
+    const deadline = Date.now() + budgetMs;
+    while (Date.now() < deadline) {
+      try {
+        const res = await fetch(url, { signal: AbortSignal.timeout(5_000) });
+        if (res.ok && (await res.text()).includes("#EXTM3U")) return true;
+      } catch { /* not up yet */ }
+      await new Promise((r) => setTimeout(r, 2_000));
+    }
+    return false;
+  }
+
   private shareFrameWithBrain(): void {
     if (!this.o.brain || !this.job.photo) return;
     this.o.brain.pushFrame(this.job.photo.data)
@@ -170,6 +278,7 @@ export class GlassIntakeCore {
     }
   }
 
+  // NB: public — index.ts debug routes speak through the same echo-guard path.
   async speak(session: GlassSession, text: string): Promise<void> {
     this.echoGuard.push(text);
     try {

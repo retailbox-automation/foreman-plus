@@ -16,6 +16,7 @@ import base64
 import binascii
 import logging
 import os
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -42,6 +43,92 @@ class Frame(BaseModel):
     image_b64: str
 
 
+class StreamReq(BaseModel):
+    """A live HLS URL (Mentra managed stream) to pull frames from."""
+    url: str
+
+
+class StreamPuller:
+    """ffmpeg subprocess: HLS → numbered JPEGs in frame_dir. Restarts on death
+    (the glasses project's known gotcha: ffmpeg dies when the ingest muxer
+    resets and never recovers on its own)."""
+
+    def __init__(self, frame_dir: Path) -> None:
+        self.frame_dir = frame_dir
+        self.url: str | None = None
+        self._proc: asyncio.subprocess.Process | None = None
+        self._task: asyncio.Task | None = None
+        self._stopping = False
+
+    @staticmethod
+    def ffmpeg_cmd(url: str, frame_dir: Path) -> list[str]:
+        return [
+            "ffmpeg", "-nostdin", "-loglevel", "error",
+            "-reconnect", "1", "-reconnect_streamed", "1",
+            "-reconnect_on_network_error", "1", "-reconnect_on_http_error", "4xx,5xx",
+            "-reconnect_delay_max", "10", "-rw_timeout", "15000000",
+            "-live_start_index", "-1",
+            "-i", url,
+            "-vf", "fps=1/2,scale=1280:-2", "-q:v", "4",
+            str(frame_dir / "stream-%05d.jpg"),
+        ]
+
+    async def start(self, url: str) -> None:
+        await self.stop()
+        self._stopping = False
+        self.url = url
+        self._task = asyncio.create_task(self._run())
+
+    async def stop(self) -> None:
+        self._stopping = True
+        if self._proc and self._proc.returncode is None:
+            self._proc.terminate()
+        if self._task:
+            self._task.cancel()
+            self._task = None
+        self.url = None
+
+    @property
+    def running(self) -> bool:
+        return self._task is not None and not self._task.done()
+
+    def _newest_frame_age(self) -> float | None:
+        mtimes = [p.stat().st_mtime for p in self.frame_dir.glob("stream-*.jpg")]
+        return None if not mtimes else time.time() - max(mtimes)
+
+    async def _run(self) -> None:
+        restarts = 0
+        while not self._stopping and self.url and restarts < 30:
+            for old in self.frame_dir.glob("stream-*.jpg"):
+                old.unlink(missing_ok=True)
+            log.info("stream puller: starting ffmpeg for %s", self.url)
+            self._proc = await asyncio.create_subprocess_exec(
+                *self.ffmpeg_cmd(self.url, self.frame_dir))
+            started = time.monotonic()
+            # Staleness watchdog: ffmpeg is known to HANG (not exit) when the
+            # ingest muxer resets (glasses project, 07-15 live test) — its own
+            # reconnect flags don't cover that, so we kill on frozen output.
+            while True:
+                try:
+                    rc: int | None = await asyncio.wait_for(
+                        asyncio.shield(self._proc.wait()), timeout=4)
+                    break
+                except asyncio.TimeoutError:
+                    age = self._newest_frame_age()
+                    no_output_s = time.monotonic() - started
+                    if (age is None and no_output_s > 40) or (age is not None and age > 12):
+                        log.warning("stream frames stale (age=%s, up=%.0fs) — killing ffmpeg",
+                                    f"{age:.1f}s" if age else "none", no_output_s)
+                        self._proc.terminate()
+                        rc = await self._proc.wait()
+                        break
+            if self._stopping:
+                break
+            restarts += 1
+            log.warning("stream ffmpeg exited rc=%s, restart #%d in 2s", rc, restarts)
+            await asyncio.sleep(min(2 * restarts, 15))
+
+
 async def speak_bridge(text: str, url: str) -> None:
     async with httpx.AsyncClient(timeout=15) as http:
         await http.post(url, json={"text": text})
@@ -53,19 +140,35 @@ async def speak_local(text: str) -> None:
 
 
 def make_app(brain: LiveBrain, frame_dir: Path, speak) -> FastAPI:
+    puller = StreamPuller(frame_dir)
+
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
         await brain.start()
         poller = asyncio.create_task(frame_dir_poller(frame_dir, brain.push_frame))
         yield
         poller.cancel()
+        await puller.stop()
         await brain.stop()
 
     app = FastAPI(lifespan=lifespan)
 
     @app.get("/health")
     async def health() -> dict:
-        return {"ok": True, "frame_age_s": brain.frame.age_s}
+        return {"ok": True, "frame_age_s": brain.frame.age_s,
+                "streaming": puller.running, "stream_url": puller.url}
+
+    @app.post("/stream")
+    async def stream_start(s: StreamReq) -> dict:
+        if not s.url.startswith("http"):
+            raise HTTPException(status_code=400, detail="url must be an HLS http(s) URL")
+        await puller.start(s.url)
+        return {"ok": True, "url": s.url}
+
+    @app.delete("/stream")
+    async def stream_stop() -> dict:
+        await puller.stop()
+        return {"ok": True}
 
     @app.post("/frame")
     async def frame(f: Frame) -> dict:

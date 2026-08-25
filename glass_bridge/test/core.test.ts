@@ -14,7 +14,7 @@ class FakeSession implements GlassSession {
   requestPhotoImpl: () => Promise<{ buffer: Buffer; mimeType: string; size: number }> =
     async () => ({ buffer: Buffer.from("req-jpeg"), mimeType: "image/jpeg", size: 8 });
   audio = { speak: async (t: string) => { this.spoken.push(t); } };
-  camera = { requestPhoto: async () => this.requestPhotoImpl() };
+  camera: GlassSession["camera"] = { requestPhoto: async () => this.requestPhotoImpl() };
 }
 
 class FakeFleet implements FleetClient {
@@ -36,12 +36,14 @@ class FakeBrain implements BrainClient {
   async ask(t: string) { this.asked.push(t); return `re: ${t}`; }
 }
 
-function rig(opts: { brain?: FakeBrain; fleet?: FakeFleet } = {}) {
+function rig(opts: { brain?: FakeBrain; fleet?: FakeFleet; awake?: boolean; awakeIdleMs?: number } = {}) {
   const fleet = opts.fleet ?? new FakeFleet();
   const core = new GlassIntakeCore({
     appName: "foreman_app", userId: "glass-tech", foreman: fleet,
     brain: opts.brain ?? null, reassureAfterMs: [], log: () => {},
+    awakeIdleMs: opts.awakeIdleMs,
   });
+  core.awake = opts.awake ?? true; // most scenarios assume an engaged tech
   return { core, fleet, session: new FakeSession() };
 }
 
@@ -150,6 +152,68 @@ describe("fillers", () => {
     expect(await core.onUtterance(session, "Okay, sounds good.")).toBe("note"); // has content → stays
     expect(core.job.transcript).toEqual(["Okay, sounds good."]);
     expect(brain.asked).toEqual(["Okay, sounds good."]);
+  });
+});
+
+describe("attention gate (the meeting-in-the-room incident, 25.08)", () => {
+  test("asleep: ambient speech is neither noted nor answered, commands still work", async () => {
+    const brain = new FakeBrain();
+    const { core, session } = rig({ brain, awake: false });
+    expect(await core.onUtterance(session, "waiting for a van and Jesse maybe")).toBe("asleep");
+    expect(core.job.transcript).toEqual([]);
+    expect(brain.asked).toEqual([]);
+    await core.onUtterance(session, "take a photo");
+    expect(core.job.photo).not.toBeNull(); // explicit command pierces the gate
+  });
+
+  test("wake word wakes and speaks; sleep word sleeps", async () => {
+    const { core, session } = rig({ awake: false });
+    expect(await core.onUtterance(session, "hey foreman")).toBe("woke");
+    expect(session.spoken).toEqual(["Listening."]);
+    expect(core.awake).toBe(true);
+    expect(await core.onUtterance(session, "be quiet now")).toBe("slept");
+    expect(core.awake).toBe(false);
+  });
+
+  test("wake word carrying a command executes the command immediately", async () => {
+    const { core, session } = rig({ awake: false });
+    await core.onUtterance(session, "foreman, take a photo");
+    expect(core.job.photo).not.toBeNull();
+    expect(core.awake).toBe(true);
+  });
+
+  test("auto-sleep after idle window", async () => {
+    const { core, session } = rig({ awakeIdleMs: 1 });
+    await core.onUtterance(session, "first note");
+    await Bun.sleep(5);
+    expect(await core.onUtterance(session, "ambient chatter later")).toBe("asleep");
+  });
+});
+
+describe("live view (managed stream)", () => {
+  test("start waits for a real #EXTM3U manifest, then hooks the brain", async () => {
+    const brain = new FakeBrain();
+    const streams: string[] = [];
+    (brain as FakeBrain & { startStream(u: string): Promise<void> }).startStream =
+      async (u: string) => { streams.push(u); };
+    const { core, session } = rig({ brain });
+    session.camera.startManagedStream = async () => ({ hlsUrl: "https://cf/x/manifest.m3u8" });
+    session.camera.stopManagedStream = async () => {};
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = (async () => new Response("#EXTM3U\n#EXT-X-VERSION:3")) as unknown as typeof fetch;
+    try {
+      expect(await core.startLiveView(session)).toBe(true);
+    } finally { globalThis.fetch = realFetch; }
+    expect(streams).toEqual(["https://cf/x/manifest.m3u8"]);
+    expect(session.spoken.at(-1)).toBe("Live view is on. I can see what you see now.");
+    await core.stopLiveView(session);
+    expect(core.streamInfo).toBeNull();
+  });
+
+  test("start on a connection without managed streaming says so", async () => {
+    const { core, session } = rig();
+    expect(await core.startLiveView(session)).toBe(false);
+    expect(session.spoken.at(-1)).toBe("Live view is not supported on this connection.");
   });
 });
 

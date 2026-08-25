@@ -22,7 +22,7 @@ const FILLERS = new Set([
   "yeah", "yep", "yes", "ok", "okay", "mhm", "mmm", "uh", "um", "uhhuh",
   "right", "sure", "cool", "nice",
   // Mentra en-US ASR renders these as separate tokens ("Mm-hm." → mm hm)
-  "hm", "hmm", "mmhm", "mhmm", "uhm", "alright", "gotcha", "got", "it",
+  "hm", "hmm", "mm", "mmhm", "mhmm", "uhm", "alright", "gotcha", "got", "it",
 ]);
 
 /**

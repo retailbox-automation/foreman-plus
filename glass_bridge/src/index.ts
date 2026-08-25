@@ -33,6 +33,8 @@ const LANGS = (process.env.TRANSCRIBE_LANGS ?? "").split(",").map((s) => s.trim(
 if (!API_KEY) throw new Error("MENTRAOS_API_KEY is required");
 if (!FOREMAN_URL) throw new Error("FOREMAN_RUN_URL is required");
 
+const DEBUG_KEY = process.env.DEBUG_KEY ?? "";
+
 class ForemanGlassBridge extends AppServer {
   private readonly core = new GlassIntakeCore({
     appName: APP_NAME,
@@ -41,11 +43,104 @@ class ForemanGlassBridge extends AppServer {
     brain: LIVE_BRAIN_URL ? new LiveBrainClient(LIVE_BRAIN_URL) : null,
     photoSize: parsePhotoSize(process.env.PHOTO_SIZE),
   });
+  private currentSession: AppSession | null = null;
+  private glassesState: Record<string, unknown> | null = null;
+
+  constructor(opts: ConstructorParameters<typeof AppServer>[0]) {
+    super(opts);
+    if (DEBUG_KEY) this.setupDebugRoutes();
+  }
+
+  /** Operator remote control: lets us trigger photo/stream/say and pull the
+   *  captured JPEG while the technician is hands-free (or away). Enabled only
+   *  when DEBUG_KEY is set; wrong/missing key answers 404 (route invisible). */
+  private setupDebugRoutes(): void {
+    type Req = { get(h: string): string | undefined; body?: Record<string, unknown> };
+    type Res = {
+      status(c: number): Res; json(b: unknown): void;
+      set(h: string, v: string): Res; send(b: unknown): void; end(): void;
+    };
+    const app = this.getExpressApp() as unknown as {
+      get(p: string, h: (req: Req, res: Res) => void): void;
+      post(p: string, h: (req: Req, res: Res) => void): void;
+    };
+    const guarded = (h: (req: Req, res: Res, s: AppSession) => void | Promise<void>) =>
+      (req: Req, res: Res): void => {
+        if (req.get("x-debug-key") !== DEBUG_KEY) { res.status(404).end(); return; }
+        const s = this.currentSession;
+        if (!s) { res.status(503).json({ ok: false, error: "no glasses session" }); return; }
+        void h(req, res, s);
+      };
+
+    app.get("/debug/state", guarded(async (_req, res, s) => {
+      const sess = s as unknown as {
+        getWifiStatus?: () => unknown;
+        device?: { state?: { getSnapshot?: () => unknown } };
+      };
+      res.json({
+        ok: true,
+        awake: this.core.awake,
+        job: { id: this.core.job.jobId, notes: this.core.job.transcript.length, hasPhoto: !!this.core.job.photo },
+        lastPhoto: this.core.lastPhoto
+          ? { bytes: this.core.lastPhoto.data.length, mimeType: this.core.lastPhoto.mimeType, ageS: Math.round((Date.now() - this.core.lastPhoto.at) / 1000) }
+          : null,
+        stream: this.core.streamInfo,
+        wifi: sess.getWifiStatus?.() ?? null,
+        device: sess.device?.state?.getSnapshot?.() ?? null,
+        glasses: this.glassesState,
+      });
+    }));
+
+    app.post("/debug/photo", guarded(async (_req, res, s) => {
+      const ok = await this.core.capturePhoto(s);
+      res.json({ ok, lastPhoto: this.core.lastPhoto ? { bytes: this.core.lastPhoto.data.length } : null });
+    }));
+
+    app.get("/debug/photo.jpg", guarded(async (_req, res) => {
+      const p = this.core.lastPhoto;
+      if (!p) { res.status(404).json({ ok: false, error: "no photo yet" }); return; }
+      res.set("content-type", p.mimeType).send(p.data);
+    }));
+
+    app.post("/debug/stream/start", guarded(async (_req, res, s) => {
+      const ok = await this.core.startLiveView(s);
+      res.json({ ok, stream: this.core.streamInfo });
+    }));
+
+    app.post("/debug/stream/stop", guarded(async (_req, res, s) => {
+      await this.core.stopLiveView(s);
+      res.json({ ok: true });
+    }));
+
+    app.post("/debug/say", guarded(async (req, res, s) => {
+      const text = String(req.body?.text ?? "").trim();
+      if (!text) { res.status(400).json({ ok: false, error: "text required" }); return; }
+      await this.core.speak(s, text);
+      res.json({ ok: true });
+    }));
+
+    app.post("/debug/utterance", guarded(async (req, res, s) => {
+      const text = String(req.body?.text ?? "").trim();
+      const acted = await this.core.onUtterance(s, text);
+      res.json({ ok: true, acted });
+    }));
+  }
 
   protected override async onSession(
     session: AppSession, sessionId: string, userId: string,
   ): Promise<void> {
+    this.currentSession = session;
     console.log(`[session] connected: ${sessionId} user=${userId} job=${this.core.job.jobId}`);
+    try {
+      (session as unknown as { onGlassesConnectionState?: (h: (st: unknown) => void) => void })
+        .onGlassesConnectionState?.((st) => { this.glassesState = st as Record<string, unknown>; });
+    } catch { /* older SDK shape — state stays null */ }
+    try {
+      session.camera.onManagedStreamStatus?.((st) => {
+        const s = st as { status?: string; hlsUrl?: string; message?: string };
+        console.log(`[stream] status=${s.status}${s.message ? ` msg=${s.message}` : ""}${s.hlsUrl ? ` hls=${s.hlsUrl}` : ""}`);
+      });
+    } catch { /* logging only */ }
 
     session.events.onButtonPress((btn) => {
       void this.core.onButtonPress(session, String(btn.buttonId), String(btn.pressType));

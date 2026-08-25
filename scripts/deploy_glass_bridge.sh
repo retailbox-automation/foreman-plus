@@ -19,6 +19,9 @@ fi
 if [[ -n "${LIVE_BRAIN_URL:-}" ]]; then
   ENV="${ENV},LIVE_BRAIN_URL=${LIVE_BRAIN_URL}"
 fi
+if [[ -n "${DEBUG_KEY:-}" ]]; then
+  ENV="${ENV},DEBUG_KEY=${DEBUG_KEY}"
+fi
 
 gcloud run deploy foreman-glass \
   --source "$ROOT/glass_bridge" \
