@@ -1,0 +1,19 @@
+{
+  "name": "foreman-glass-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "bun src/index.ts",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@mentra/sdk": "2.1.29",
+    "dotenv": "^16.4.5",
+    "google-auth-library": "^9.14.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.0",
+    "bun-types": "^1.1.0"
+  }
+}

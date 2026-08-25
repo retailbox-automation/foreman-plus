@@ -22,3 +22,6 @@ docs/VALUE-STORY-*
 docs/VALUE-LEVERS-PANEL-*
 docs/TECH-JOURNEY-*
 .impeccable/
+docs/video/*.mp4
+docs/video/audio/
+docs/MENTRA-INTEGRATION-PREP-*
