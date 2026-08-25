@@ -206,7 +206,21 @@ class LiveBrain:
             data = self.frame.take_fresh() or self.frame.peek()
             if data is not None:
                 parts.append(types.Part(inline_data=types.Blob(data=data, mime_type="image/jpeg")))
-            parts.append(types.Part(text=text))
+                parts.append(types.Part(text=text))
+            else:
+                # No frame: say so IN the turn. The persona alone did not hold —
+                # live 25.08 the model caved to social pressure ("Camera,
+                # buddy") and invented a valve plus repair steps with no
+                # image at all. A hard system marker beats a standing rule.
+                age = self.frame.age_s
+                state = ("you have received no photo at all" if age is None
+                         else f"your last photo is {age:.0f}s old and stale")
+                parts.append(types.Part(
+                    text=f"[SYSTEM: no photo is attached to this turn — {state}. "
+                         f"Do NOT describe what you 'currently' see. If the user "
+                         f"asks what you see, say you need a fresh photo and ask "
+                         f"them to say 'take a photo'. Never invent objects.]\n"
+                         f"User: {text}"))
             await session.send_client_content(turns=types.Content(role="user", parts=parts))
             try:
                 return await asyncio.wait_for(self._pending, self.cfg.ask_timeout_s)

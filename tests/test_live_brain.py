@@ -102,13 +102,19 @@ async def test_ask_puts_the_frame_inside_the_question_turn():
 
 
 @pytest.mark.asyncio
-async def test_ask_without_any_frame_is_text_only():
+async def test_ask_without_any_frame_carries_a_no_photo_system_marker():
+    """Persona alone did not stop hallucination (live 25.08: 'Camera, buddy' →
+    invented valve); a frameless turn must carry an explicit SYSTEM marker."""
     brain = make_brain()
     fake = FakeSession(brain, "Point the camera at the unit.")
     brain._session = fake
     brain._connected.set()
     await brain.ask("what is this?")
-    assert [p.text for p in fake.sent[0][1].parts] == ["what is this?"]
+    parts = fake.sent[0][1].parts
+    assert len(parts) == 1
+    assert parts[0].text.startswith("[SYSTEM: no photo is attached")
+    assert "no photo at all" in parts[0].text
+    assert parts[0].text.rstrip().endswith("User: what is this?")
 
 
 @pytest.mark.asyncio
