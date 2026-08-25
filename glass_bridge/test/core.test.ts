@@ -282,6 +282,34 @@ describe("brain question queue + photo race", () => {
   });
 });
 
+describe("brain-initiated photo ([TAKE_PHOTO])", () => {
+  test("brain asks for eyes → bridge captures → re-ask carries the question", async () => {
+    const brain = new FakeBrain();
+    let calls = 0;
+    brain.ask = async (t: string) => {
+      brain.asked.push(t);
+      calls += 1;
+      return calls === 1 ? "[TAKE_PHOTO]" : "The reset button is pressed in, good.";
+    };
+    const { core, session } = rig({ brain });
+    await core.onUtterance(session, "can you check the reset button now?");
+    expect(core.job.photo).not.toBeNull();
+    expect(brain.asked[1]).toContain("Here is the fresh photo");
+    expect(brain.asked[1]).toContain("can you check the reset button now?");
+    expect(session.spoken).toEqual(["Photo captured.", "The reset button is pressed in, good."]);
+  });
+
+  test("capture failure does not loop or speak a stale token", async () => {
+    const brain = new FakeBrain();
+    brain.ask = async () => "[TAKE_PHOTO]";
+    const { core, session } = rig({ brain });
+    session.requestPhotoImpl = async () => { throw new Error("timeout"); };
+    await core.onUtterance(session, "what do you see?");
+    expect(session.spoken.at(-1)).toBe("Photo did not come through. Try the camera button.");
+    expect(session.spoken.join(" ")).not.toContain("TAKE_PHOTO");
+  });
+});
+
 describe("photo-mode brain", () => {
   test("photo is pushed as the brain's frame; questions are answered aloud", async () => {
     const brain = new FakeBrain();

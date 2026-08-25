@@ -3,7 +3,7 @@
 export type Command = "photo" | "submit" | "reset" | "stream_on" | "stream_off" | null;
 
 const PHOTO_RE =
-  /(сфоткай|сфотографируй|сделай (ещё )?фото|ещё фото|(take|make|snap|shoot|grab) (a |another |a new |one more )?(photo|picture|pic|shot)|another (photo|picture|shot)|new (photo|picture)|capture (it|this|that))/i;
+  /(сфоткай|сфотографируй|сдела(й|ть|ем)( ещё)?( одно| одну| новое| новую)? фото|ещё (одно )?фото|нов(ое фото|ую фотографию)|(take|make|snap|shoot|grab) (a |another |a new |one more )?(photo|picture|pic|shot)|another (photo|picture|shot)|new (photo|picture)|capture (it|this|that))/i;
 const SUBMIT_RE =
   /(отправляй|отправить заявку|заявку в работу|send it( in| off)?|submit( the)?( job| request)?|file it)/i;
 const RESET_RE =
@@ -26,7 +26,8 @@ const NB = "[^а-яёa-z0-9]"; // non-word boundary that also works for Cyrillic
 const WAKE_RE = new RegExp(
   `(?:^|${NB})(?:hey|привет|эй|окей|ok)[ ,]+${WAKE_NAMES}(?:${NB}|$)` +
   `|^${NB}*${WAKE_NAMES}(?:${NB}|$)`, "i");
-const SLEEP_RE = /\b(be quiet|quiet|mute|go to sleep|stop listening|тихо|замолчи|хватит|усни)\b/i;
+const SLEEP_RE =
+  /(be quiet|\bquiet\b|\bmute\b|go to sleep|stop listening|disconnect now|тихо|замолчи|хватит|усни|отключ(айся|ись|аться)|выключайся|можешь отключаться)/i;
 
 export function matchesWake(text: string): boolean { return WAKE_RE.test(text); }
 export function matchesSleep(text: string): boolean { return SLEEP_RE.test(text); }

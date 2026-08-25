@@ -103,6 +103,9 @@ class LiveBrain:
     def _connect_config(self) -> types.LiveConnectConfig:
         return types.LiveConnectConfig(
             response_modalities=[types.Modality.TEXT],
+            # Grounding: lets the brain actually search (model manuals, part
+            # prices) instead of refusing — Mikhail's ask, 25.08 walkthrough.
+            tools=[types.Tool(google_search=types.GoogleSearch())],
             system_instruction=self.cfg.system_instruction or None,
             # transparent=True is what adk-python's production reconnect loop
             # sets on the Vertex backend (base_llm_flow.py) — the server carries

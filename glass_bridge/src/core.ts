@@ -337,9 +337,20 @@ export class GlassIntakeCore {
         }
         try {
           this.trace("brain", { phase: "ask", text: question });
-          const reply = await this.o.brain.ask(question);
+          let reply = await this.o.brain.ask(question);
           this.trace("brain", { phase: "reply", text: reply });
-          if (reply) await this.speak(session, reply);
+          // The brain asks for eyes: capture and re-ask with the fresh frame.
+          // This closes the "why can't YOU take a photo, you just did" seam —
+          // to the tech, the assistant and the camera are ONE system.
+          if (reply.includes("[TAKE_PHOTO]")) {
+            this.trace("brain", { phase: "auto-photo", text: question });
+            const got = await this.capturePhoto(session); // speaks "Photo captured."
+            reply = got
+              ? await this.o.brain.ask("Here is the fresh photo. Now answer: " + question)
+              : "";
+            this.trace("brain", { phase: "reply", text: reply });
+          }
+          if (reply) await this.speak(session, reply.replace(/\[TAKE_PHOTO\]/g, "").trim());
         } catch (err) {
           this.log(`[live-brain] forward failed: ${String(err)}`);
         }
