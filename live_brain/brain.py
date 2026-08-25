@@ -267,11 +267,13 @@ class LiveBrain:
                 age = self.frame.age_s
                 state = ("you have received no photo at all" if age is None
                          else f"your last photo is {age:.0f}s old and stale")
+                fresh_path = ("call your take_photo tool NOW and answer from the "
+                              "photo that follows" if self.cfg.tool_executor
+                              else "ask them to say 'take a photo'")
                 parts.append(types.Part(
                     text=f"[SYSTEM: no photo is attached to this turn — {state}. "
-                         f"Do NOT describe what you 'currently' see. If the user "
-                         f"asks what you see, say you need a fresh photo and ask "
-                         f"them to say 'take a photo'. Never invent objects.]\n"
+                         f"Do NOT describe what you 'currently' see and never "
+                         f"invent objects. If answering needs sight, {fresh_path}.]\n"
                          f"User: {text}"))
             await session.send_client_content(turns=types.Content(role="user", parts=parts))
             try:
