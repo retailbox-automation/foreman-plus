@@ -11,7 +11,20 @@ from pathlib import Path
 
 import asyncpg
 from fastapi import FastAPI
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+
+try:  # container: foreman_core is vendored next to main.py at deploy time
+    from foreman_core.closeout import (
+        authorization_json, build_closeout,
+        render_decider_html, render_homeowner_html,
+    )
+    from foreman_core.memory import MemoryStore
+except ImportError:  # local dev / tests: repo root on sys.path
+    from foreman_app.foreman_core.closeout import (
+        authorization_json, build_closeout,
+        render_decider_html, render_homeowner_html,
+    )
+    from foreman_app.foreman_core.memory import MemoryStore
 
 STATIC = Path(__file__).parent / "static"
 
@@ -103,6 +116,23 @@ async def api_state():
         "activity": activity,
         "counters": {k: int(v) for k, v in counters.items()},
     })
+
+
+@app.get("/doc/{job_id}")
+async def job_document(job_id: str, mode: str = "homeowner"):
+    """Client-facing closeout document, built strictly from gated memory."""
+    store = MemoryStore(state["pool"])
+    c = await build_closeout(store, job_id)
+    render = render_decider_html if mode == "decider" else render_homeowner_html
+    return HTMLResponse(render(c))
+
+
+@app.get("/api/closeout/{job_id}")
+async def closeout_api(job_id: str):
+    """Authorization JSON (home-warranty lane / downstream systems)."""
+    store = MemoryStore(state["pool"])
+    c = await build_closeout(store, job_id)
+    return JSONResponse(authorization_json(c))
 
 
 @app.get("/healthz")

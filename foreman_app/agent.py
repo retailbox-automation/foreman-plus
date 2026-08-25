@@ -1,8 +1,12 @@
-"""Foreman+ fleet: root agent + estimator, with gated shared memory."""
+"""Foreman+ fleet: root agent + estimator + closer, with gated shared memory."""
 from google.adk.agents import Agent
 
 from . import runtime
-from .foreman_core.tools import make_memory_tools, make_recall_tool
+from .foreman_core.tools import (
+    make_closeout_tool,
+    make_memory_tools,
+    make_recall_tool,
+)
 
 MODEL = "gemini-3.7-flash"
 
@@ -31,6 +35,15 @@ def _tools_for(agent_name: str):
     return [record_fact, lookup_facts, recall_similar]
 
 
+async def close_out_job(job_id: str) -> dict:
+    """Close out a job into its client-facing document, built strictly from
+    gate-approved facts (honest unknowns, advisory warranty, refrigerant
+    flags). Returns the document URL and a compact summary."""
+    store, _ = await runtime.get_env()
+    tool = make_closeout_tool(store)
+    return await tool(job_id=job_id)
+
+
 estimator = Agent(
     name="estimator",
     model=MODEL,
@@ -48,6 +61,28 @@ estimator = Agent(
     tools=_tools_for("estimator"),
 )
 
+closer = Agent(
+    name="closer",
+    model=MODEL,
+    description="Closes a job into a verified client-facing document; briefs "
+                "the next person from fleet memory.",
+    instruction=(
+        'You are the closer agent of a repair fleet. Two duties:\n'
+        '1) When asked to close out "Job <ID>": call close_out_job with that '
+        "job_id. Report the document_url, the verified facts, and — honestly — "
+        "every unknown. If rejected_count > 0, say that rejected claims were "
+        "kept OUT of the document by the write-gate. Mention any flags (A2L "
+        "refrigerant, replacement conversation) in plain language. Never invent "
+        "a value for an unknown field.\n"
+        '2) When asked to brief the next person (comfort advisor, a different '
+        "technician on a callback): call lookup_facts on the job and "
+        "recall_similar on the issue, then give a short briefing: what is "
+        "verified about the equipment, what was rejected and why, what past "
+        "jobs the fleet remembers, and what remains unknown."
+    ),
+    tools=[close_out_job] + _tools_for("closer")[1:],  # lookup_facts, recall_similar
+)
+
 root_agent = Agent(
     name="foreman",
     model=MODEL,
@@ -56,11 +91,13 @@ root_agent = Agent(
         'You are the foreman of a repair fleet. When a user reports a problem "Job '
         '<ID>: ...", FIRST record every concrete reported attribute into shared '
         'memory via record_fact with subject "job:<ID>" — use predicates like '
-        "equipment_model, serial_number, manufacture_date, issue. Then transfer to "
-        "the estimator agent for the scope. Present its JSON verbatim to the user. "
-        "If a record_fact call returns verdict rejected, tell the user which fact "
-        "was rejected and why instead of silently dropping it."
+        "equipment_model, serial_number, manufacture_date, refrigerant, issue. "
+        "Then transfer to the estimator agent for the scope. Present its JSON "
+        "verbatim to the user. If a record_fact call returns verdict rejected, "
+        "tell the user which fact was rejected and why instead of silently "
+        "dropping it. When the user asks to close out a job or brief the next "
+        "person, transfer to the closer agent."
     ),
-    sub_agents=[estimator],
+    sub_agents=[estimator, closer],
     tools=_tools_for("foreman"),
 )

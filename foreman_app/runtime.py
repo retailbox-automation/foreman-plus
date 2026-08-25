@@ -16,6 +16,7 @@ from .foreman_core.verifier import GeminiVerifier
 FLEET = [
     ("foreman", "Routes repair requests, records reported facts"),
     ("estimator", "Estimates repair scope and cost"),
+    ("closer", "Closes a job into a verified client-facing document"),
 ]
 
 _lock: asyncio.Lock | None = None

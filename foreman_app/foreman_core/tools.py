@@ -25,6 +25,32 @@ def make_recall_tool(store: MemoryStore, embedder):
     return memory_recall
 
 
+def make_closeout_tool(store: MemoryStore):
+    """Deterministic closeout: verified-facts document + authorization JSON."""
+
+    async def close_out_job(job_id: str) -> dict:
+        """Close out a job into its client-facing document. Builds the closeout
+        strictly from gate-approved facts: honest unknowns, advisory warranty,
+        refrigerant flags. Returns the document URL and a compact summary."""
+        try:
+            from .closeout import authorization_json, build_closeout
+            c = await build_closeout(store, job_id)
+            return {
+                "job_id": job_id,
+                "document_url": f"/doc/{job_id}",
+                "verified": {p: v["value"] for p, v in c["equipment"].items()
+                             if v["value"] != "UNKNOWN"},
+                "unknowns": c["unknowns"],
+                "flags": c["flags"],
+                "rejected_count": len(c["rejected"]),
+                "authorization": authorization_json(c),
+            }
+        except Exception as e:
+            return {"error": str(e)}
+
+    return close_out_job
+
+
 def make_memory_tools(agent_name: str, store: MemoryStore, gate: WriteGate):
     """Returns (memory_write, memory_search) bound to one agent's identity."""
 

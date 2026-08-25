@@ -1,4 +1,5 @@
-google-adk[db,gcp,otel-gcp]==2.7.1
+google-adk[db,gcp,otel-gcp,a2a]==2.7.1
 asyncpg
 greenlet
 google-cloud-firestore
+sse-starlette
