@@ -69,7 +69,7 @@ export class GlassIntakeCore {
   constructor(private readonly o: CoreOptions) {
     this.log = o.log ?? ((m) => console.log(m));
     this.trace = o.trace ?? (() => {});
-    this.awakeIdleMs = o.awakeIdleMs ?? 180_000;
+    this.awakeIdleMs = o.awakeIdleMs ?? 120_000;
   }
 
   /** photo_taken broadcast (system camera button = ONE shutter). */
@@ -131,7 +131,10 @@ export class GlassIntakeCore {
       if (cmd === null) { this.trace("gate", { result: "woke", text: t }); await this.speak(session, "Listening."); return "woke"; }
     }
 
-    if (cmd !== null) this.trace("gate", { result: "command", cmd, text: t });
+    if (cmd !== null) {
+      this.trace("gate", { result: "command", cmd, text: t });
+      this.lastAwakeActivity = Date.now(); // commands DO extend the window
+    }
     if (cmd === "photo") { await this.capturePhoto(session); return "photo"; }
     if (cmd === "submit") { await this.submit(session); return "submit"; }
     if (cmd === "stream_on") { void this.startLiveView(session); return "note"; }
@@ -143,7 +146,10 @@ export class GlassIntakeCore {
       return "reset";
     }
     if (!this.awake) { this.trace("gate", { result: "asleep-dropped", text: t }); return "asleep"; }
-    this.lastAwakeActivity = Date.now();
+    // Deliberately NOT refreshing lastAwakeActivity here: ambient room speech
+    // kept an accidentally-woken gate awake FOREVER (live 25.08, second
+    // meeting incident). Only wake words and explicit commands extend the
+    // window; a false wake now decays on its own.
     this.trace("gate", { result: "note", text: t });
     addUtterance(this.job, t);
     if (this.o.brain) await this.forwardToBrain(session, t);

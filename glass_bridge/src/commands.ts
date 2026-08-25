@@ -16,8 +16,16 @@ const STREAM_OFF_RE =
 // Wake/sleep for the attention gate. The glasses mic hears EVERYTHING in the
 // room (live 25.08: it transcribed and answered Mikhail's unrelated meeting),
 // so the assistant must be opt-in per conversation, not always-on.
-// "mentra" included: live 25.08 Mikhail's instinct was "Hey Mentra".
-const WAKE_RE = /\b(hey )?(foreman|форман|ассистент|assistant|mentra|ментра)\b/i;
+// Wake is deliberately EXPENSIVE: an address ("hey mentra" / "Foreman, ...").
+// Bare "ассистент"/"assistant" was removed the same evening — the word came up
+// in Mikhail's unrelated Russian meeting and woke the gate mid-call.
+// NB: JS \b is ASCII-only and never matches Cyrillic (old glasses project
+// gotcha) — boundaries are spelled out by hand.
+const WAKE_NAMES = "(?:foreman|форман|mentra|ментра)";
+const NB = "[^а-яёa-z0-9]"; // non-word boundary that also works for Cyrillic
+const WAKE_RE = new RegExp(
+  `(?:^|${NB})(?:hey|привет|эй|окей|ok)[ ,]+${WAKE_NAMES}(?:${NB}|$)` +
+  `|^${NB}*${WAKE_NAMES}(?:${NB}|$)`, "i");
 const SLEEP_RE = /\b(be quiet|quiet|mute|go to sleep|stop listening|тихо|замолчи|хватит|усни)\b/i;
 
 export function matchesWake(text: string): boolean { return WAKE_RE.test(text); }

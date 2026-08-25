@@ -192,6 +192,23 @@ describe("attention gate (the meeting-in-the-room incident, 25.08)", () => {
     expect(core.awake).toBe(false);
   });
 
+  test("bare mid-sentence mentions do NOT wake (the second-meeting incident)", async () => {
+    const { core, session } = rig({ awake: false });
+    expect(await core.onUtterance(session, "наш ассистент подготовит платежи")).toBe("asleep");
+    expect(await core.onUtterance(session, "the assistant will handle invoices")).toBe("asleep");
+    expect(await core.onUtterance(session, "мы используем ментра каждый день")).toBe("asleep");
+    expect(core.awake).toBe(false);
+    // an ADDRESS still wakes
+    expect(await core.onUtterance(session, "Привет, Ментра")).toBe("woke");
+  });
+
+  test("ambient speech does not extend the awake window; commands do", async () => {
+    const { core, session } = rig({ awake: true, awakeIdleMs: 30 });
+    await core.onUtterance(session, "some ambient sentence"); // note, no refresh
+    await Bun.sleep(40);
+    expect(await core.onUtterance(session, "more ambient talk")).toBe("asleep");
+  });
+
   test("wake word carrying a command executes the command immediately", async () => {
     const { core, session } = rig({ awake: false });
     await core.onUtterance(session, "foreman, take a photo");
