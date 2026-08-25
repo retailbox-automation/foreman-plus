@@ -16,7 +16,7 @@
 ## Поправки критика (сильнее текста файлов)
 1. **Модель = `gemini-3.7-flash`** (переключено 19.08, тесты 19/19): 3.7-flash — «New Stable», та же цена ($0.75/$3.75 за 1M), тот же контекст (1M/65K), та же мультимодалка; 3.6-flash уже «previous-generation». Гоча: 3.7 отвергает `thinking_level="MINIMAL"` (у 3.6/3.5-lite это дефолт) — thinking-конфиг задавать явно.
 2. **Cloud SQL подключение:** на Cloud Run — ТОЛЬКО unix-socket DSN через `--add-cloudsql-instances` (уже в проде, см. cloud-run.md §3). Python Connector из cloud-sql-pgvector.md — только для локалки; НЕ добавлять зависимость в контейнер.
-3. **pgvector размерность:** пример `vector(768)` в cloud-sql-pgvector.md ссылается на text-embedding-004, которого у нас НЕТ. Наш эмбеддер — `gemini-embedding-001`; при создании колонки жёстко спарить размерность с `output_dimensionality=…` в КАЖДОМ embed-вызове.
+3. **pgvector размерность:** пример `vector(768)` в cloud-sql-pgvector.md ссылается на text-embedding-004, которого у нас НЕТ. Наш эмбеддер — `gemini-embedding-2` (с 25.08.2026; до этого `gemini-embedding-001`, все строки пере-эмбеднуты `backfill_embeddings.py --all`); при создании колонки жёстко спарить размерность с `output_dimensionality=…` в КАЖДОМ embed-вызове. Гоча id: `gemini-embedding-2` — только на `location=global`; на `us-central1` он же зовётся `gemini-embedding-2-preview`; REST `:predict` → 404, работает `embedContent` (genai SDK).
 4. **`adk deploy` без `--session_service_uri` молча падает в in-memory сессии** (авто-детект K_SERVICE, подтверждено кодом service_factory.py) — флаг ОБЯЗАТЕЛЕН в каждой команде деплоя.
 
 ## Консолидированные зависимости контейнера (foreman_app/requirements.txt)

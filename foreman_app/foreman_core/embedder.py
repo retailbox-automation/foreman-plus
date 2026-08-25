@@ -1,9 +1,18 @@
-"""Embeddings for semantic recall (gemini-embedding-001, 768 dims pinned)."""
+"""Embeddings for semantic recall (gemini-embedding-2, 768 dims pinned).
+
+Model switch 2026-08-25: gemini-embedding-001 → gemini-embedding-2 (stable,
+multimodal — text/image/audio/PDF share one space, 8k-token input). Same
+768-dim output, so vector(768) + the HNSW index are untouched; existing rows
+were re-embedded in full (scripts/backfill_embeddings.py --all) because the
+two models' spaces are not comparable.
+Vertex id gotcha: `gemini-embedding-2` resolves on location=global (our
+runtime); regional endpoints (us-central1) only know `gemini-embedding-2-preview`.
+"""
 from google.genai import types
 
 from .genai_client import make_client
 
-EMBED_MODEL = "gemini-embedding-001"
+EMBED_MODEL = "gemini-embedding-2"
 DIM = 768  # MUST match vector(768) in schema.sql — pinned on every call
 
 _TASK = {"document": "RETRIEVAL_DOCUMENT", "query": "RETRIEVAL_QUERY"}

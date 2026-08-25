@@ -256,7 +256,8 @@ water-heater nameplate (model/serial/date). See
 ## 6. Embeddings
 
 Model names live at ai.google.dev/gemini-api/docs/models (WebFetch 2026-08-19):
-- **`gemini-embedding-001`** — text-only embeddings. Paid: **$0.15 / 1M input
+- **`gemini-embedding-2`** (наш с 25.08.2026, stable, «recommended going forward» по ai.google.dev/embeddings) — мультимодальные эмбеддинги (текст/изображение/аудио/видео/PDF в одном пространстве), вход 8192 токенов, default 3072 dims, рекомендованные 768/1536/3072 (у нас 768 пиновано). Live-verified: на Vertex `location=global` id `gemini-embedding-2`; на `us-central1` только `gemini-embedding-2-preview`; REST `:predict` → 404, работает `embedContent` через genai SDK; task_type RETRIEVAL_DOCUMENT/QUERY поддерживаются; cos(related)=0.76 vs cos(unrelated)=0.52 на нашем тексте. Смена модели = ПОЛНЫЙ re-embed (`scripts/backfill_embeddings.py --all`): пространства 001 и 2 несовместимы.
+- **`gemini-embedding-001`** (до 25.08.2026) — text-only embeddings. Paid: **$0.15 / 1M input
   tokens**, free tier available. Output dims: UNVERIFIED exact default (docs
   page didn't render the dims table) — Google's published default for this
   model family is 3072 with `output_dimensionality` truncation down to smaller

@@ -145,7 +145,7 @@ Everything works without the glasses — they're a capture device, not a depende
 
 | Requirement | How Foreman+ uses it |
 |---|---|
-| **Gemini** | `gemini-3.7-flash` reasons for all three fleet agents *and* judges every write-gate proposal; `gemini-embedding-001` (768 dims, pinned on every call) embeds facts for semantic recall; **`gemini-live-2.5-flash` (Live API)** powers the hands-free guidance brain. All called through Vertex AI. |
+| **Gemini** | `gemini-3.7-flash` reasons for all three fleet agents *and* judges every write-gate proposal; **`gemini-embedding-2`** (Google's multimodal embedding model, 768 dims pinned on every call) embeds facts for semantic recall; **`gemini-live-2.5-flash` (Live API)** powers the hands-free guidance brain. All called through Vertex AI. |
 | **Google Agent Framework** | Google **ADK** 2.7.1 — the 3-agent fleet with native `sub_agents` LLM-driven transfer, `DatabaseSessionService` for durable session state on Postgres, and `to_a2a()` to expose `closer` as its own A2A service. |
 | **Google Cloud service** | **Cloud Run** (5 services: `foreman-hello` — the fleet's ADK API server and intake target, `foreman-dash`, `foreman-closer`, `foreman-glass`, `foreman-brain`), **Cloud SQL** (Postgres + `pgvector`, HNSW cosine index — system of record for facts and the gate journal), **Firestore** (native mode — best-effort live activity feed). |
 | **Observability** | OpenTelemetry via `--otel_to_cloud` (Cloud Trace + Cloud Logging + Cloud Monitoring from one flag); the write-gate's own span nests under ADK's spans for a single per-request waterfall. |
@@ -232,7 +232,7 @@ foreman_app/
     memory.py            # bi-temporal MemoryStore (asyncpg + pgvector)
     gate.py               # WriteGate: propose → guard → lock → verify → apply
     verifier.py            # GeminiVerifier — the LLM judge
-    embedder.py             # GeminiEmbedder — gemini-embedding-001, 768 dims
+    embedder.py             # GeminiEmbedder — gemini-embedding-2, 768 dims
     closeout.py              # deterministic closeout builder + 3 renders
     activity.py               # best-effort Firestore live-activity feed
     genai_client.py            # Vertex AI vs. legacy Gemini key client factory
