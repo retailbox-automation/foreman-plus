@@ -158,6 +158,11 @@ def make_app(brain: LiveBrain, frame_dir: Path, speak) -> FastAPI:
         return {"ok": True, "frame_age_s": brain.frame.age_s,
                 "streaming": puller.running, "stream_url": puller.url}
 
+    @app.post("/reset")
+    async def reset() -> dict:
+        await brain.reset()
+        return {"ok": True}
+
     @app.post("/stream")
     async def stream_start(s: StreamReq) -> dict:
         if not s.url.startswith("http"):

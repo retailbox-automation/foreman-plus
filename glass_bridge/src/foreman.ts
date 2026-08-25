@@ -63,6 +63,11 @@ export class LiveBrainClient extends IdTokenCaller {
     return body?.reply ?? "";
   }
 
+  /** Fresh conversation for a fresh job. Best-effort. */
+  async reset(): Promise<void> {
+    await this.postJson("/reset", {}, 20_000);
+  }
+
   /** Point the brain's eyes at a live HLS stream (ffmpeg on the brain side). */
   async startStream(hlsUrl: string): Promise<void> {
     await this.postJson("/stream", { url: hlsUrl }, 20_000);

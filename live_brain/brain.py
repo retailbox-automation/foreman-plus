@@ -121,6 +121,23 @@ class LiveBrain:
         if self._runner_task:
             self._runner_task.cancel()
 
+    async def reset(self) -> None:
+        """Fresh conversation: drop the resumption handle and reconnect.
+        The Live session otherwise accumulates every past frame/exchange
+        (live 25.08: it kept steering a new user toward an old test's sink)."""
+        self._resumption_handle = None
+        self._goaway = False
+        if self._runner_task:
+            self._runner_task.cancel()
+            try:
+                await self._runner_task
+            except (asyncio.CancelledError, Exception):  # noqa: BLE001
+                pass
+        self._connected.clear()
+        self._session = None
+        self._stopping = False
+        self._runner_task = asyncio.create_task(self._run_forever())
+
     async def _run_forever(self) -> None:
         backoff = self.cfg.reconnect_backoff_s
         while not self._stopping:

@@ -27,6 +27,7 @@ export interface FleetClient {
 export interface BrainClient {
   pushFrame(jpeg: Buffer): Promise<void>;
   ask(text: string): Promise<string>;
+  reset?(): Promise<void>;
   startStream?(hlsUrl: string): Promise<void>;
   stopStream?(): Promise<void>;
 }
@@ -126,6 +127,7 @@ export class GlassIntakeCore {
     if (cmd === "stream_off") { void this.stopLiveView(session); return "note"; }
     if (cmd === "reset") {
       this.job = newJob();
+      if (this.o.brain?.reset) void this.o.brain.reset().catch(() => {});
       await this.speak(session, "Fresh job started.");
       return "reset";
     }
@@ -136,8 +138,20 @@ export class GlassIntakeCore {
     return "note";
   }
 
+  private photoInFlight: Promise<boolean> | null = null;
+
   /** Explicit voice-command photo — requestPhoto with the size ladder. */
   async capturePhoto(session: GlassSession): Promise<boolean> {
+    const run = this.capturePhotoInner(session);
+    this.photoInFlight = run;
+    try {
+      return await run;
+    } finally {
+      if (this.photoInFlight === run) this.photoInFlight = null;
+    }
+  }
+
+  private async capturePhotoInner(session: GlassSession): Promise<boolean> {
     const attempts = photoSizeLadder(this.o.photoSize);
     for (let i = 0; i < attempts.length; i++) {
       const want = attempts[i];
@@ -261,18 +275,38 @@ export class GlassIntakeCore {
   }
 
   private brainBusy = false;
+  /** Depth-1 queue: while the brain is busy, keep only the LATEST question
+   *  (live 25.08: silent drops ate "can you see it now?" — the tech's actual
+   *  question — and the stale earlier reply read as a wrong answer). */
+  private queuedQuestion: string | null = null;
 
   private async forwardToBrain(session: GlassSession, text: string): Promise<void> {
     if (!this.o.brain) return;
-    // One question in flight at a time: a reply that arrives while the tech
-    // is already saying the next thing would just queue behind it in TTS.
-    if (this.brainBusy) { this.log("[live-brain] busy, dropping: " + text.slice(0, 40)); return; }
+    if (this.brainBusy) {
+      this.queuedQuestion = text;
+      this.log("[live-brain] busy, queued: " + text.slice(0, 40));
+      return;
+    }
     this.brainBusy = true;
     try {
-      const reply = await this.o.brain.ask(text);
-      if (reply) await this.speak(session, reply);
-    } catch (err) {
-      this.log(`[live-brain] forward failed: ${String(err)}`);
+      let question: string | null = text;
+      while (question !== null) {
+        // A question asked while a photo is in flight should SEE that photo —
+        // live 25.08 "can you see it now?" raced the 7-35s transfer and the
+        // brain kept answering about the previous (blurry) frame.
+        if (this.photoInFlight) {
+          await Promise.race([this.photoInFlight, new Promise((r) => setTimeout(r, 35_000))])
+            .catch(() => { /* capture failure already spoken */ });
+        }
+        try {
+          const reply = await this.o.brain.ask(question);
+          if (reply) await this.speak(session, reply);
+        } catch (err) {
+          this.log(`[live-brain] forward failed: ${String(err)}`);
+        }
+        question = this.queuedQuestion;
+        this.queuedQuestion = null;
+      }
     } finally {
       this.brainBusy = false;
     }

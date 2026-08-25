@@ -217,6 +217,37 @@ describe("live view (managed stream)", () => {
   });
 });
 
+describe("brain question queue + photo race", () => {
+  test("question asked while brain is busy is queued (latest wins) and answered after", async () => {
+    const brain = new FakeBrain();
+    let release: () => void = () => {};
+    const firstDone = new Promise<void>((r) => { release = r; });
+    const origAsk = brain.ask.bind(brain);
+    let calls = 0;
+    brain.ask = async (t: string) => {
+      calls += 1;
+      if (calls === 1) await firstDone;
+      return origAsk(t);
+    };
+    const { core, session } = rig({ brain });
+    const p1 = core.onUtterance(session, "first question about the unit");
+    await core.onUtterance(session, "stale middle question");
+    await core.onUtterance(session, "can you see it now?");
+    release();
+    await p1;
+    await Bun.sleep(0);
+    // middle question was replaced by the latest one; both real asks answered
+    expect(brain.asked).toEqual(["first question about the unit", "can you see it now?"]);
+    expect(session.spoken).toContain("re: can you see it now?");
+  });
+
+  test("wake word 'hey mentra' works", async () => {
+    const { core, session } = rig({ awake: false });
+    expect(await core.onUtterance(session, "Hey Mentra")).toBe("woke");
+    expect(session.spoken).toEqual(["Listening."]);
+  });
+});
+
 describe("photo-mode brain", () => {
   test("photo is pushed as the brain's frame; questions are answered aloud", async () => {
     const brain = new FakeBrain();
