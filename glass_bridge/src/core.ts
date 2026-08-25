@@ -43,6 +43,9 @@ export interface CoreOptions {
   /** Auto-sleep after this much silence while awake (default 3 min). */
   awakeIdleMs?: number;
   log?: (msg: string) => void;
+  /** Structured event trace (rule: an agent whose steps can't be reconstructed
+   *  after the fact is a bug). Every decision goes through here. */
+  trace?: (kind: string, data: Record<string, unknown>) => void;
 }
 
 export class GlassIntakeCore {
@@ -61,8 +64,11 @@ export class GlassIntakeCore {
   private readonly echoGuard = new EchoGuard();
   private readonly log: (msg: string) => void;
 
+  private readonly trace: (kind: string, data: Record<string, unknown>) => void;
+
   constructor(private readonly o: CoreOptions) {
     this.log = o.log ?? ((m) => console.log(m));
+    this.trace = o.trace ?? (() => {});
     this.awakeIdleMs = o.awakeIdleMs ?? 180_000;
   }
 
@@ -74,6 +80,7 @@ export class GlassIntakeCore {
     setPhoto(this.job, Buffer.from(data), mime);
     this.lastPhoto = { data: Buffer.from(data), mimeType: mime, at: Date.now() };
     this.log(`[photo] captured via photo_taken broadcast (${data.byteLength} bytes)`);
+    this.trace("photo", { phase: "broadcast", bytes: data.byteLength });
     await this.speak(session, "Photo captured.");
     this.shareFrameWithBrain();
   }
@@ -85,6 +92,7 @@ export class GlassIntakeCore {
    *  platform's Cloud SDK limitation, not a choice. */
   async onButtonPress(session: GlassSession, buttonId: string, pressType: string): Promise<void> {
     this.log(`[button] ${buttonId} ${pressType}`);
+    this.trace("button", { buttonId, pressType });
     if (pressType !== "short") return; // long = system (video / power)
     if (Date.now() - this.lastPhotoAt <= 3_000) return; // debounce double-clicks
     await this.capturePhoto(session);
@@ -96,20 +104,22 @@ export class GlassIntakeCore {
   ): Promise<"echo" | "photo" | "submit" | "reset" | "note" | "filler" | "asleep" | "woke" | "slept"> {
     const t = text.trim();
     if (!t) return "echo";
-    if (this.echoGuard.isEcho(t)) return "echo";
+    if (this.echoGuard.isEcho(t)) { this.trace("gate", { result: "echo", text: t }); return "echo"; }
     this.log(`[voice] ${t}`);
     // "Mm-hm" / "okay" are not questions: keep them out of the notes and
     // never wake the brain on them (live 25.08: every filler got a reply,
     // and TTS is serial → answers queued up as "it lags / doesn't answer").
-    if (isBackchannel(t)) return "filler";
+    if (isBackchannel(t)) { this.trace("gate", { result: "filler", text: t }); return "filler"; }
 
     // Attention gate. The mic hears the whole room; while asleep we neither
     // take notes nor answer — but explicit commands still work.
     if (this.awake && Date.now() - this.lastAwakeActivity > this.awakeIdleMs) {
       this.awake = false;
       this.log("[gate] auto-sleep after idle");
+      this.trace("gate", { result: "auto-sleep" });
     }
     if (matchesSleep(t)) {
+      this.trace("gate", { result: "slept", text: t });
       if (this.awake) { this.awake = false; await this.speak(session, "Going quiet."); }
       return "slept";
     }
@@ -118,9 +128,10 @@ export class GlassIntakeCore {
       this.awake = true;
       this.lastAwakeActivity = Date.now();
       // A wake that carries a real command falls through to it below.
-      if (cmd === null) { await this.speak(session, "Listening."); return "woke"; }
+      if (cmd === null) { this.trace("gate", { result: "woke", text: t }); await this.speak(session, "Listening."); return "woke"; }
     }
 
+    if (cmd !== null) this.trace("gate", { result: "command", cmd, text: t });
     if (cmd === "photo") { await this.capturePhoto(session); return "photo"; }
     if (cmd === "submit") { await this.submit(session); return "submit"; }
     if (cmd === "stream_on") { void this.startLiveView(session); return "note"; }
@@ -131,8 +142,9 @@ export class GlassIntakeCore {
       await this.speak(session, "Fresh job started.");
       return "reset";
     }
-    if (!this.awake) return "asleep";
+    if (!this.awake) { this.trace("gate", { result: "asleep-dropped", text: t }); return "asleep"; }
     this.lastAwakeActivity = Date.now();
+    this.trace("gate", { result: "note", text: t });
     addUtterance(this.job, t);
     if (this.o.brain) await this.forwardToBrain(session, t);
     return "note";
@@ -178,11 +190,13 @@ export class GlassIntakeCore {
         this.lastGoodSize = i > 0 ? want : undefined;
         this.lastGoodSizeAt = Date.now();
         this.log(`[photo] requestPhoto ok (${photo.size} bytes, size=${want ?? "default"})`);
+        this.trace("photo", { phase: "ok", size: want ?? "default", bytes: photo.size, attempt: i });
         await this.speak(session, "Photo captured.");
         this.shareFrameWithBrain();
         return true;
       } catch (err) {
         this.log(`[photo] attempt ${i} (${want ?? "default"}) failed: ${String(err)}`);
+        this.trace("photo", { phase: "fail", size: want ?? "default", attempt: i, error: String(err).slice(0, 120) });
       }
     }
     await this.speak(session, "Photo did not come through. Try the camera button.");
@@ -203,6 +217,7 @@ export class GlassIntakeCore {
     const reassure = (this.o.reassureAfterMs ?? [20_000, 45_000]).map((ms) =>
       setTimeout(() => { void this.speak(session, "Still working — the estimator is on it."); }, ms));
     try {
+      this.trace("submit", { phase: "start", jobId: job.jobId, notes: job.transcript.length });
       await this.speak(session, "Sending to the fleet.");
       await this.o.foreman.ensureSession(job.jobId);
       const t0 = Date.now();
@@ -210,11 +225,13 @@ export class GlassIntakeCore {
       reassure.forEach(clearTimeout);
       const reply = renderSpoken(events);
       this.log(`[submit] ${job.jobId} done in ${Math.round((Date.now() - t0) / 1000)}s → ${reply}`);
+      this.trace("submit", { phase: "done", jobId: job.jobId, seconds: Math.round((Date.now() - t0) / 1000), reply });
       await this.speak(session, reply || "The fleet has it. Scope is on the dashboard.");
       this.job = newJob(); // next capture starts clean
     } catch (err) {
       reassure.forEach(clearTimeout);
       this.log(`[submit] failed: ${String(err)}`);
+      this.trace("submit", { phase: "fail", jobId: job.jobId, error: String(err).slice(0, 160) });
       await this.speak(session, "Sending failed. Your capture is safe — say send it to retry.");
     } finally {
       this.submitting = false;
@@ -298,6 +315,7 @@ export class GlassIntakeCore {
     if (this.brainBusy) {
       this.queuedQuestion = text;
       this.log("[live-brain] busy, queued: " + text.slice(0, 40));
+      this.trace("brain", { phase: "queued", text });
       return;
     }
     this.brainBusy = true;
@@ -312,7 +330,9 @@ export class GlassIntakeCore {
             .catch(() => { /* capture failure already spoken */ });
         }
         try {
+          this.trace("brain", { phase: "ask", text: question });
           const reply = await this.o.brain.ask(question);
+          this.trace("brain", { phase: "reply", text: reply });
           if (reply) await this.speak(session, reply);
         } catch (err) {
           this.log(`[live-brain] forward failed: ${String(err)}`);
@@ -327,6 +347,7 @@ export class GlassIntakeCore {
 
   // NB: public — index.ts debug routes speak through the same echo-guard path.
   async speak(session: GlassSession, text: string): Promise<void> {
+    this.trace("speak", { text });
     this.echoGuard.push(text);
     try {
       await session.audio.speak(text);

@@ -188,11 +188,14 @@ def make_app(brain: LiveBrain, frame_dir: Path, speak) -> FastAPI:
 
     @app.post("/utterance")
     async def utterance(u: Utterance) -> dict:
+        age = brain.frame.age_s
         try:
             reply = await brain.ask(u.text)
         except (ConnectionError, asyncio.TimeoutError) as e:
             reply = "Sorry, I lost the link for a second. Say that again."
             log.warning("ask failed: %s", e)
+        log.info("ASK frame_age=%s | Q: %s | A: %s",
+                 f"{age:.0f}s" if age is not None else "none", u.text, reply)
         if speak is not None and reply:
             try:
                 await speak(reply)

@@ -35,6 +35,18 @@ if (!FOREMAN_URL) throw new Error("FOREMAN_RUN_URL is required");
 
 const DEBUG_KEY = process.env.DEBUG_KEY ?? "";
 
+/** Ring buffer of structured events — the full reconstructable trace of what
+ *  the glasses heard, what we decided, and what we said. Also mirrored to
+ *  stdout as one-line JSON (grep GTRACE). */
+const TRACE_MAX = 600;
+const traceBuf: Array<Record<string, unknown>> = [];
+function pushTrace(kind: string, data: Record<string, unknown>): void {
+  const ev = { ts: new Date().toISOString(), kind, ...data };
+  traceBuf.push(ev);
+  if (traceBuf.length > TRACE_MAX) traceBuf.shift();
+  console.log("GTRACE " + JSON.stringify(ev));
+}
+
 class ForemanGlassBridge extends AppServer {
   private readonly core = new GlassIntakeCore({
     appName: APP_NAME,
@@ -42,6 +54,7 @@ class ForemanGlassBridge extends AppServer {
     foreman: new ForemanClient(FOREMAN_URL, APP_NAME, USER_ID),
     brain: LIVE_BRAIN_URL ? new LiveBrainClient(LIVE_BRAIN_URL) : null,
     photoSize: parsePhotoSize(process.env.PHOTO_SIZE),
+    trace: pushTrace,
   });
   private currentSession: AppSession | null = null;
   private glassesState: Record<string, unknown> | null = null;
@@ -71,6 +84,11 @@ class ForemanGlassBridge extends AppServer {
         if (!s) { res.status(503).json({ ok: false, error: "no glasses session" }); return; }
         void h(req, res, s);
       };
+
+    app.get("/debug/trace", guarded(async (req, res) => {
+      const n = Math.min(Number((req as unknown as { query?: { n?: string } }).query?.n ?? 100), TRACE_MAX);
+      res.json({ ok: true, events: traceBuf.slice(-n) });
+    }));
 
     app.get("/debug/state", guarded(async (_req, res, s) => {
       const sess = s as unknown as {
@@ -131,6 +149,11 @@ class ForemanGlassBridge extends AppServer {
   ): Promise<void> {
     this.currentSession = session;
     console.log(`[session] connected: ${sessionId} user=${userId} job=${this.core.job.jobId}`);
+    pushTrace("session", { phase: "connected", sessionId, userId });
+    try {
+      (session.events as unknown as { onDisconnected?: (h: (info: unknown) => void) => void })
+        .onDisconnected?.((info) => pushTrace("session", { phase: "disconnected", info: String(info).slice(0, 200) }));
+    } catch { /* trace only */ }
     try {
       (session as unknown as { onGlassesConnectionState?: (h: (st: unknown) => void) => void })
         .onGlassesConnectionState?.((st) => { this.glassesState = st as Record<string, unknown>; });
@@ -153,7 +176,13 @@ class ForemanGlassBridge extends AppServer {
     });
 
     const onFinal = async (data: TranscriptionData): Promise<void> => {
-      if (!data.isFinal) return;
+      // Interims prove the ASR pipeline is ALIVE even when finals are scarce —
+      // the exact blind spot of the 20:50 "went silent" incident.
+      if (!data.isFinal) {
+        pushTrace("interim", { text: (data.text ?? "").slice(0, 120) });
+        return;
+      }
+      pushTrace("transcript", { text: data.text ?? "" });
       await this.core.onUtterance(session, data.text ?? "");
     };
     if (LANGS.length > 0) {
