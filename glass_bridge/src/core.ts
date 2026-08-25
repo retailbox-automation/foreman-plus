@@ -45,6 +45,9 @@ export interface CoreOptions {
   /** Latest live session (the MentraOS WS flaps and reconnects; a capture
    *  retry must land on the CURRENT session, not the one that just died). */
   getSession?: () => GlassSession | null;
+  /** Pause before each capture retry (default 6s = observed reconnect time).
+   *  Tests pass 0. */
+  captureRetryDelayMs?: number;
   log?: (msg: string) => void;
   /** Structured event trace (rule: an agent whose steps can't be reconstructed
    *  after the fact is a bug). Every decision goes through here. */
@@ -190,7 +193,7 @@ export class GlassIntakeCore {
         // An idle MentraOS WS dies silently; the first request exposes the
         // corpse and the app reconnects within ~5s (live 25.08, twice) —
         // give it that window and aim the retry at the CURRENT session.
-        await new Promise((r) => setTimeout(r, 6_000));
+        await new Promise((r) => setTimeout(r, this.o.captureRetryDelayMs ?? 6_000));
         session = this.o.getSession?.() ?? session;
       }
       try {

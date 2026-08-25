@@ -41,7 +41,7 @@ function rig(opts: { brain?: FakeBrain; fleet?: FakeFleet; awake?: boolean; awak
   const core = new GlassIntakeCore({
     appName: "foreman_app", userId: "glass-tech", foreman: fleet,
     brain: opts.brain ?? null, reassureAfterMs: [], log: () => {},
-    awakeIdleMs: opts.awakeIdleMs,
+    awakeIdleMs: opts.awakeIdleMs, captureRetryDelayMs: 0,
   });
   core.awake = opts.awake ?? true; // most scenarios assume an engaged tech
   return { core, fleet, session: new FakeSession() };

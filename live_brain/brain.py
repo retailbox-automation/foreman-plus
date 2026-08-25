@@ -289,13 +289,17 @@ class LiveBrain:
             await session.send_client_content(turns=types.Content(role="user", parts=parts))
             try:
                 try:
-                    reply = await asyncio.wait_for(self._pending, self.cfg.ask_timeout_s)
+                    # shield: wait_for CANCELS its awaitable on timeout, and a
+                    # cancelled future poisons the extension wait below
+                    # (CancelledError, seen live as a 500 on 25.08).
+                    reply = await asyncio.wait_for(
+                        asyncio.shield(self._pending), self.cfg.ask_timeout_s)
                 except asyncio.TimeoutError:
                     # A tool round-trip (photo capture is up to ~35s) legitimately
                     # outlives the base budget — extend once, then give up.
                     if not self._tool_pending:
                         raise
-                    reply = await asyncio.wait_for(self._pending, 45)
+                    reply = await asyncio.wait_for(asyncio.shield(self._pending), 50)
             finally:
                 self._pending = None
             # The model drove its own camera: the executor pushed the new frame
