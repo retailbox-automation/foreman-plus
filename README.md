@@ -113,13 +113,41 @@ Three ADK agents share one gated Postgres memory store and are deployed as indep
   so unauthenticated RPC returns 401. The key is shared with judges separately in the
   submission's testing instructions, not in this file.
 
+## Hands-free capture: smart glasses (device-agnostic intake)
+
+The intake path takes **a photo + spoken notes as plain files** — it doesn't know or care what
+captured them. A phone works today; the same path is wired to **Mentra Live camera glasses**
+(camera + mic + speaker, no display) so a technician can file a job without taking their hands off
+the equipment, and it is ready for the Android XR glasses shipping this fall.
+
+Two small services extend the fleet for the glasses leg:
+
+- **`glass_bridge/`** — `foreman-glass` (Cloud Run, Bun + `@mentra/sdk`). Registered in the
+  MentraOS developer console as `com.retailbox.foreman`. One press of the glasses' camera button
+  takes the system photo; the bridge receives it via the `photo_taken` broadcast (a single
+  shutter — it never calls `requestPhoto` on the button, which would fire a second one). Final
+  transcripts accumulate as voice notes; **"send it"** POSTs photo + notes to the fleet's ADK
+  `/run` endpoint with a Google ID token, and the reply is rendered deterministically into a
+  spoken sentence — the gate's verdicts included: *"Logged Rheem 82V40-2, made 05/2004. Gate
+  approved 4 facts. Estimate: 2 hours, parts: lower heating element and thermostat."* No JSON is
+  ever read aloud.
+- **`live_brain/`** — `foreman-brain` (Cloud Run, Python). A persistent **Gemini Live API**
+  session on Vertex AI (`gemini-live-2.5-flash`, text-response mode) that keeps the technician's
+  latest photo or video frame as its "eyes" and answers hands-free questions in one or two spoken
+  sentences ("point the camera at the shutoff valve"). Verified live: 0.24–0.67 s per turn with a
+  frame attached, and a 6-minute session with a frame every 2 s survives with session resumption.
+  For live guidance the same brain also accepts a directory of frames from `ffmpeg` (the glasses'
+  RTMP stream over LAN, or a laptop webcam for glasses-free testing).
+
+Everything works without the glasses — they're a capture device, not a dependency.
+
 ## Google stack checklist
 
 | Requirement | How Foreman+ uses it |
 |---|---|
-| **Gemini** | `gemini-3.7-flash` reasons for all three fleet agents *and* judges every write-gate proposal; `gemini-embedding-001` (768 dims, pinned on every call) embeds facts for semantic recall. Both called through Vertex AI. |
+| **Gemini** | `gemini-3.7-flash` reasons for all three fleet agents *and* judges every write-gate proposal; `gemini-embedding-001` (768 dims, pinned on every call) embeds facts for semantic recall; **`gemini-live-2.5-flash` (Live API)** powers the hands-free guidance brain. All called through Vertex AI. |
 | **Google Agent Framework** | Google **ADK** 2.7.1 — the 3-agent fleet with native `sub_agents` LLM-driven transfer, `DatabaseSessionService` for durable session state on Postgres, and `to_a2a()` to expose `closer` as its own A2A service. |
-| **Google Cloud service** | **Cloud Run** (3 services: `foreman-dash`, `foreman-closer`, plus the earlier `foreman-hello` spike), **Cloud SQL** (Postgres + `pgvector`, HNSW cosine index — system of record for facts and the gate journal), **Firestore** (native mode — best-effort live activity feed). |
+| **Google Cloud service** | **Cloud Run** (5 services: `foreman-hello` — the fleet's ADK API server and intake target, `foreman-dash`, `foreman-closer`, `foreman-glass`, `foreman-brain`), **Cloud SQL** (Postgres + `pgvector`, HNSW cosine index — system of record for facts and the gate journal), **Firestore** (native mode — best-effort live activity feed). |
 | **Observability** | OpenTelemetry via `--otel_to_cloud` (Cloud Trace + Cloud Logging + Cloud Monitoring from one flag); the write-gate's own span nests under ADK's spans for a single per-request waterfall. |
 | **Additional Google AI model** | **Veo 3.1** was used to generate the non-application video assets (b-roll/establishing shots) for the submission demo video — it is not part of the running application. |
 
@@ -214,9 +242,20 @@ foreman_app/
 dashboard/
   main.py                # read-only ops console (FastAPI)
   static/index.html       # control-room SPA
+glass_bridge/              # Mentra Live glasses → fleet intake (Bun, @mentra/sdk) → foreman-glass
+  src/index.ts            # AppServer: single-shutter photo, voice commands, submit, speak-back
+  src/job.ts              # in-memory job, /run payload, deterministic spoken rendering
+  src/foreman.ts          # ID-token clients for the fleet and the brain
+  scripts/simulate_submit.ts  # glasses-free e2e against the real Cloud Run fleet
+live_brain/                # Gemini Live guidance brain (Python) → foreman-brain
+  brain.py                # persistent Live session: frames + text in, reconnect/resumption
+  server.py               # FastAPI: POST /frame, POST /utterance
+  glasses_rig.py          # LAN rig: glasses RTMP frames + transcript → brain → ear
 scripts/
   deploy_dashboard.sh     # vendors foreman_core/, deploys foreman-dash
   deploy_closer_a2a.sh     # stages foreman_app/, deploys foreman-closer
+  deploy_glass_bridge.sh   # deploys foreman-glass (min-instances 1: long-lived glasses session)
+  deploy_live_brain.sh     # deploys foreman-brain (auth-only, called by the bridge)
   backfill_embeddings.py   # one-off: embed pre-existing facts
 docs/stack/                # verified cheat-sheets for the underlying Google stack
 tests/                     # 11 files, unit + integration
@@ -232,10 +271,19 @@ tests/                     # 11 files, unit + integration
   Veo capability is part of this submission.
 - **No CI pipeline.** Tests are run manually (`pytest`); there's no GitHub Actions workflow in this
   repo yet.
-- **No `.env.example` is committed.** The env var block in "Run it yourself" above is the
-  authoritative list; keep it in sync if you add a new one.
-- **`foreman-hello` is an earlier spike Cloud Run service** (auth-only), left running from the
-  initial cloud-leg validation — it isn't on the demo path.
+- **No root `.env.example` is committed.** The env var block in "Run it yourself" above is the
+  authoritative list for the fleet; `glass_bridge/.env.example` covers the glasses bridge.
+- **`foreman-hello` is the fleet's ADK API server** (auth-only; the name is left over from the
+  first cloud spike). It is the intake target for the glasses bridge and the `/run` endpoint used
+  in the demo; only its callers (Cloud Run service accounts) hold `run.invoker` on it.
+- **The glasses leg runs on MentraOS's Cloud SDK, which the vendor is sunsetting** (it works in the
+  "MentraOS Legacy" app through October 2026; the successor Miniapp/Bluetooth SDKs are in beta). The
+  bridge is ~300 lines and the intake contract is device-agnostic, so porting is a bridge rewrite,
+  not a fleet change. The glasses are also not required for anything: the phone path is primary.
+- **The Live guidance brain is text-in/text-out over Gemini Live** — spoken replies go through
+  MentraOS's TTS, not Gemini's native audio output. Vertex AI's `gemini-live-2.5-flash-native-audio`
+  rejects text responses (error 1007, verified), and the glasses' Cloud SDK has no raw-PCM playback
+  path, so native audio out is deferred to the Miniapp SDK.
 - **Every Cloud Run service runs at `--max-instances 1`.** That's a deliberate choice for the
   hackathon window (predictable cost, one Cloud SQL connection budget), not a production autoscaling
   configuration.

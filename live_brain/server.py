@@ -12,6 +12,8 @@ Env: GOOGLE_CLOUD_PROJECT (required), FRAME_DIR (default captures/frames),
 from __future__ import annotations
 
 import asyncio
+import base64
+import binascii
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -20,7 +22,7 @@ from pathlib import Path
 import httpx
 import uvicorn
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from .brain import BrainConfig, LiveBrain
@@ -32,6 +34,12 @@ log = logging.getLogger("live_brain.server")
 
 class Utterance(BaseModel):
     text: str
+
+
+class Frame(BaseModel):
+    """One JPEG, base64 — the glasses bridge pushes each captured photo here so
+    photo-mode Q&A works with no video stream (Cloud Run has no LAN/RTMP)."""
+    image_b64: str
 
 
 async def speak_bridge(text: str, url: str) -> None:
@@ -58,6 +66,17 @@ def make_app(brain: LiveBrain, frame_dir: Path, speak) -> FastAPI:
     @app.get("/health")
     async def health() -> dict:
         return {"ok": True, "frame_age_s": brain.frame.age_s}
+
+    @app.post("/frame")
+    async def frame(f: Frame) -> dict:
+        try:
+            data = base64.b64decode(f.image_b64, validate=True)
+        except (binascii.Error, ValueError):
+            raise HTTPException(status_code=400, detail="image_b64 is not valid base64")
+        if not data:
+            raise HTTPException(status_code=400, detail="empty frame")
+        brain.push_frame(data)
+        return {"ok": True, "bytes": len(data)}
 
     @app.post("/utterance")
     async def utterance(u: Utterance) -> dict:
@@ -94,7 +113,10 @@ def main() -> None:
     elif os.environ.get("SPEAK_LOCAL") == "1":
         speak = speak_local
     app = make_app(LiveBrain(cfg), frame_dir, speak)
-    uvicorn.run(app, host="127.0.0.1", port=int(os.environ.get("LIVE_BRAIN_PORT", "7020")))
+    # Cloud Run injects PORT and needs 0.0.0.0; local default stays loopback.
+    port = int(os.environ.get("PORT") or os.environ.get("LIVE_BRAIN_PORT", "7020"))
+    host = "0.0.0.0" if "PORT" in os.environ else "127.0.0.1"
+    uvicorn.run(app, host=host, port=port)
 
 
 if __name__ == "__main__":

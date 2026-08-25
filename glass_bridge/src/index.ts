@@ -18,10 +18,10 @@ import { EchoGuard } from "./echo-guard.js";
 import { matchCommand } from "./commands.js";
 import { parsePhotoSize, photoSizeLadder, type PhotoSize } from "./photo-size.js";
 import {
-  addUtterance, buildRunPayload, extractReply, jobReady, newJob, setPhoto,
-  speakable, type JobState,
+  addUtterance, buildRunPayload, jobReady, newJob, renderSpoken, setPhoto,
+  type JobState,
 } from "./job.js";
-import { ForemanClient } from "./foreman.js";
+import { ForemanClient, LiveBrainClient } from "./foreman.js";
 
 const PACKAGE_NAME = process.env.PACKAGE_NAME ?? "com.retailbox.foreman";
 const API_KEY = process.env.MENTRAOS_API_KEY ?? "";
@@ -42,6 +42,7 @@ class ForemanGlassBridge extends AppServer {
   private submitting = false;
   private readonly echoGuard = new EchoGuard();
   private readonly foreman = new ForemanClient(FOREMAN_URL, APP_NAME, USER_ID);
+  private readonly brain = LIVE_BRAIN_URL ? new LiveBrainClient(LIVE_BRAIN_URL) : null;
 
   protected override async onSession(
     session: AppSession, sessionId: string, userId: string,
@@ -59,6 +60,7 @@ class ForemanGlassBridge extends AppServer {
       setPhoto(this.job, Buffer.from(data), mime);
       console.log(`[photo] captured via photo_taken broadcast (${data.byteLength} bytes)`);
       this.speak(session, "Photo captured.");
+      this.shareFrameWithBrain();
     });
 
     // --- voice ---
@@ -98,6 +100,7 @@ class ForemanGlassBridge extends AppServer {
         this.lastPhotoAt = Date.now();
         console.log(`[photo] requestPhoto ok (${photo.size} bytes, size=${want ?? "default"})`);
         await this.speak(session, "Photo captured.");
+        this.shareFrameWithBrain();
         return;
       } catch (err) {
         console.error(`[photo] attempt ${i} (${want ?? "default"}) failed:`, err);
@@ -115,16 +118,22 @@ class ForemanGlassBridge extends AppServer {
     }
     this.submitting = true;
     const job = this.job;
+    // The fleet takes 25-60s (measured live 25.08); silence that long reads
+    // as "it died" in the ear — reassure on a timer until the run returns.
+    const reassure = [20_000, 45_000].map((ms) =>
+      setTimeout(() => { this.speak(session, "Still working — the estimator is on it."); }, ms));
     try {
       await this.speak(session, "Sending to the fleet.");
       await this.foreman.ensureSession(job.jobId);
       const t0 = Date.now();
       const events = await this.foreman.run(buildRunPayload(job, APP_NAME, USER_ID));
-      const reply = speakable(extractReply(events));
-      console.log(`[submit] ${job.jobId} done in ${Math.round((Date.now() - t0) / 1000)}s`);
+      reassure.forEach(clearTimeout);
+      const reply = renderSpoken(events);
+      console.log(`[submit] ${job.jobId} done in ${Math.round((Date.now() - t0) / 1000)}s → ${reply}`);
       await this.speak(session, reply || "The fleet has it. Scope is on the dashboard.");
       this.job = newJob(); // next capture starts clean
     } catch (err) {
+      reassure.forEach(clearTimeout);
       console.error("[submit] failed:", err);
       await this.speak(session, "Sending failed. Your capture is safe — say send it to retry.");
     } finally {
@@ -132,16 +141,20 @@ class ForemanGlassBridge extends AppServer {
     }
   }
 
+  /** Photo-mode guidance: the captured photo becomes the brain's current
+   *  frame, so "what is this unit?" gets answered by Gemini Live without a
+   *  video stream (works away from home / off LAN). Best-effort. */
+  private shareFrameWithBrain(): void {
+    if (!this.brain || !this.job.photo) return;
+    this.brain.pushFrame(this.job.photo.data)
+      .catch((err) => console.error("[live-brain] frame push failed:", err));
+  }
+
   private async forwardToLiveBrain(session: AppSession, text: string): Promise<void> {
+    if (!this.brain) return;
     try {
-      const res = await fetch(`${LIVE_BRAIN_URL}/utterance`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ text }),
-        signal: AbortSignal.timeout(30_000),
-      });
-      const body = (await res.json()) as { reply?: string };
-      if (body.reply) await this.speak(session, body.reply);
+      const reply = await this.brain.ask(text);
+      if (reply) await this.speak(session, reply);
     } catch (err) {
       console.error("[live-brain] forward failed:", err);
     }
