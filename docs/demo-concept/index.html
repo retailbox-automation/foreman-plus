@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Foreman+ — the job record that proves itself</title>
+<meta name="description" content="Photograph the nameplate and talk. Foreman+ returns a verified job record in ~15 seconds — every fact passes a write gate, and the property remembers.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F7F6F2; --panel:#FFFFFF; --brain:#EFEDE7; --brain-deep:#E9E7E0;
+  --ink:#1B1C1E; --ink-2:#55575C; --ink-3:#6B6E72; --line:#E2E0D9; --line-2:#D2D0C8;
+  --green:#15803D; --green-bg:#E9F5EE; --green-line:#BFE3CD;
+  --red:#C22A1E; --red-bg:#FBEDEA; --red-line:#EFC7C1;
+  --orange:#E8590C;
+  --sans:"Archivo",system-ui,sans-serif;
+  --mono:"Spline Sans Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+::selection{background:#FBD9C3}
+a{color:inherit}
+button{font:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--orange);outline-offset:2px;border-radius:2px}
+
+/* ---------- header ---------- */
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 28px;border-bottom:1px solid var(--line);background:var(--paper);position:sticky;top:0;z-index:30}
+.wordmark{display:flex;align-items:center;gap:9px;font-weight:800;font-size:17px;letter-spacing:.01em;font-stretch:112%}
+.wordmark svg{display:block}
+.top-links{display:flex;align-items:center;gap:18px;font-size:13.5px;color:var(--ink-2)}
+.top-links a{text-decoration:none;border-bottom:1px solid var(--line-2);padding-bottom:1px}
+.top-links a:hover{color:var(--ink);border-color:var(--ink-3)}
+.gate-tally{display:flex;gap:14px;font-family:var(--mono);font-size:12.5px;color:var(--ink-2)}
+.gate-tally b{font-weight:600;color:var(--ink);display:inline-block}
+.gate-tally .t-ok::before,.gate-tally .t-no::before{content:"";display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;vertical-align:baseline}
+.gate-tally .t-ok::before{background:var(--green)}
+.gate-tally .t-no::before{background:var(--red)}
+
+/* ---------- masthead ---------- */
+.mast{position:relative;overflow:hidden;border-bottom:1px solid var(--line)}
+.mast-media{position:absolute;inset:0;z-index:0}
+.mast-media video,.mast-media img{width:100%;height:100%;object-fit:cover;filter:saturate(.7)}
+.mast-media .mast-fallback{display:none}
+.mast-media::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(247,246,242,.97) 0%,rgba(247,246,242,.93) 44%,rgba(247,246,242,.55) 100%)}
+.mast-inner{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:64px 28px 58px}
+.mast h1{font-size:clamp(34px,4.6vw,58px);line-height:1.02;font-weight:850;letter-spacing:-.015em;font-stretch:105%;max-width:13ch}
+.mast .lede{margin-top:18px;max-width:56ch;font-size:17.5px;color:var(--ink-2);line-height:1.55}
+.mast .lede b{color:var(--ink);font-weight:600}
+.mast-cta{margin-top:28px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.run-btn{display:inline-flex;align-items:center;gap:10px;background:var(--ink);color:#fff;border:none;border-radius:6px;padding:14px 26px;font-size:16px;font-weight:650;letter-spacing:.005em;box-shadow:0 6px 18px rgba(27,28,30,.18);transition:transform .15s cubic-bezier(.2,.8,.3,1),box-shadow .15s}
+.run-btn:hover{transform:translateY(-1px);box-shadow:0 9px 24px rgba(27,28,30,.22)}
+.run-btn:active{transform:translateY(0)}
+.run-btn svg{display:block}
+.run-btn[data-state="playing"]{background:#3A3B3E}
+.mast-note{font-size:13.5px;color:var(--ink-3)}
+
+/* ---------- demo split ---------- */
+.stage{max-width:1180px;margin:0 auto;padding:40px 28px 8px}
+.stage-grid{display:grid;grid-template-columns:minmax(0,1fr) 46px minmax(0,1.12fr);align-items:stretch}
+.stage-grid > section{padding-top:4px}
+
+/* left: the phone */
+.phone{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 10px 30px rgba(27,28,30,.07);padding:22px 22px 18px;display:flex;flex-direction:column;gap:16px;min-height:560px}
+.job-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;border-bottom:1px solid var(--line);padding-bottom:12px}
+.job-head .jt{font-weight:750;font-size:18px;letter-spacing:-.01em}
+.job-head .jid{font-family:var(--mono);font-size:12.5px;color:var(--ink-3)}
+.intake{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center}
+.plate{width:148px;border-radius:6px;overflow:hidden;border:1px solid var(--line-2);box-shadow:0 3px 10px rgba(27,28,30,.12)}
+.plate img{display:block;width:100%;height:auto}
+.voice .vlabel{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--ink-2);margin-bottom:7px}
+.wave{display:flex;align-items:flex-end;gap:2.5px;height:30px}
+.wave i{width:3.5px;background:var(--ink-3);border-radius:2px;height:100%;transform:scaleY(.22);transform-origin:bottom;transition:transform .18s ease-out}
+.wave.on i{background:var(--ink-2);animation:wv 1s ease-in-out infinite alternate}
+.wave.on i:nth-child(2n){animation-delay:.12s}.wave.on i:nth-child(3n){animation-delay:.24s}.wave.on i:nth-child(5n){animation-delay:.36s}
+@keyframes wv{from{transform:scaleY(.14)}to{transform:scaleY(.96)}}
+.utterance{font-size:14.5px;color:var(--ink-2);font-style:normal;margin-top:6px;min-height:22px}
+.utterance q{quotes:"\201C" "\201D"}
+.scope{border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.scope h3{font-size:12.5px;font-weight:650;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);padding:10px 14px;border-bottom:1px solid var(--line);background:#FBFAF7}
+.scope dl{display:grid;grid-template-columns:150px 1fr}
+.scope dt{padding:9px 14px;font-size:13.5px;color:var(--ink-2);border-bottom:1px solid var(--line)}
+.scope dd{padding:9px 14px;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:13.5px;color:var(--ink-3);transition:color .35s}
+.scope dl > :nth-last-child(-n+2){border-bottom:none}
+.scope dd.set{color:var(--ink);font-weight:500}
+.scope dd .src{display:inline-block;margin-left:8px;font-size:10.5px;font-family:var(--sans);font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);border:1px solid var(--line-2);border-radius:3px;padding:1px 5px;vertical-align:1px}
+.scope dd.hold{position:relative}
+.scope dd.hold.kept::after{content:"unchanged";position:absolute;right:12px;top:50%;transform:translateY(-50%);font-family:var(--sans);font-size:10.5px;font-weight:650;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);border:1px solid var(--line-2);border-radius:3px;padding:1px 6px}
+.remark{border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:14.5px;color:var(--ink-2);display:none}
+.remark.show{display:block;animation:rise .4s cubic-bezier(.2,.8,.3,1)}
+.remark .who{font-size:11px;font-weight:650;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);display:block;margin-bottom:4px}
+.estimate{border:1px solid var(--line-2);border-radius:10px;padding:14px;display:none;background:#FBFAF7;transition:box-shadow .25s,border-color .25s;text-align:left;width:100%;color:inherit}
+.estimate.show{display:block;animation:rise .45s cubic-bezier(.2,.8,.3,1)}
+.estimate .e-h{display:block;font-size:12.5px;font-weight:650;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);margin-bottom:8px}
+.estimate .sum{display:block;font-size:15.5px;font-weight:650}
+.estimate .e-list{display:grid;gap:5px;margin-top:8px}
+.estimate .e-item{display:block;font-size:13.5px;color:var(--ink-2);padding-left:16px;position:relative;overflow-wrap:anywhere}
+.estimate .e-item::before{content:"";position:absolute;left:0;top:7px;width:7px;height:7px;border:1.5px solid var(--ink-3);border-radius:2px}
+.estimate .prov-hint{display:block;margin-top:10px;font-size:12.5px;color:var(--ink-3)}
+.estimate:hover{border-color:var(--ink-3)}
+.estimate.tracing{border-color:var(--orange);box-shadow:0 0 0 3px rgba(232,89,12,.14)}
+.clock{margin-top:auto;display:flex;align-items:baseline;gap:10px;border-top:1px solid var(--line);padding-top:14px}
+.clock .num{font-size:44px;font-weight:850;font-stretch:118%;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1}
+.clock .unit{font-size:14px;color:var(--ink-2)}
+.clock .cap{margin-left:auto;font-size:12.5px;color:var(--ink-3);max-width:21ch;text-align:right}
+.clock.done .num{letter-spacing:-.01em}
+
+/* spine */
+.spine{position:relative}
+.spine::before{content:"";position:absolute;left:50%;top:8%;bottom:4%;width:1.5px;background:var(--line-2)}
+.pulse{position:absolute;left:50%;top:8%;width:9px;height:9px;border-radius:50%;background:var(--orange);transform:translate(-50%,-50%) scale(0);box-shadow:0 0 0 4px rgba(232,89,12,.15)}
+.pulse.go{animation:travel 1.1s cubic-bezier(.4,0,.3,1) forwards}
+@keyframes travel{0%{transform:translate(-50%,-50%) scale(0)}12%{transform:translate(-50%,-50%) scale(1)}88%{top:8%;opacity:1}100%{top:86%;transform:translate(-50%,-50%) scale(.4);opacity:0}}
+
+/* right: the brain */
+.brain{background:var(--brain);border:1px solid var(--line-2);border-radius:14px;padding:22px;display:flex;flex-direction:column;gap:14px;min-height:560px}
+.fleet{display:flex;gap:8px;flex-wrap:wrap}
+.node{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line-2);background:var(--brain-deep);color:var(--ink-3);border-radius:100px;padding:5px 13px;font-family:var(--mono);font-size:12.5px;transition:all .35s}
+.node i{width:7px;height:7px;border-radius:50%;background:var(--line-2);transition:background .35s}
+.node.on{background:var(--panel);color:var(--ink);border-color:var(--ink-3)}
+.node.on i{background:var(--orange)}
+.ledger-head{display:flex;justify-content:space-between;align-items:baseline}
+.ledger-head h2{font-size:15px;font-weight:750;letter-spacing:-.005em}
+.ledger-head .sub{font-size:12.5px;color:var(--ink-2)}
+.ledger{display:flex;flex-direction:column;gap:9px;overflow:hidden;flex:1}
+.ledger-hint{margin-top:4px;padding:14px;border:1px dashed var(--line-2);border-radius:9px;font-size:13.5px;color:var(--ink-2);line-height:1.5}
+.ledger-hint b{font-weight:650;color:var(--ink)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:11px 13px;opacity:0;transform:translateY(10px);transition:opacity .4s ease-out,transform .4s cubic-bezier(.2,.8,.3,1),box-shadow .3s}
+.card.show{opacity:1;transform:none}
+.card .row1{display:flex;align-items:center;gap:7px 9px;flex-wrap:wrap;font-family:var(--mono);font-size:12.5px;color:var(--ink-2);overflow-wrap:anywhere}
+.card .verdict{font-family:var(--sans);font-size:10.5px;font-weight:750;letter-spacing:.1em;padding:2px 8px;border-radius:4px}
+.card.ok .verdict{color:var(--green);background:var(--green-bg);border:1px solid var(--green-line)}
+.card.no .verdict{color:var(--red);background:var(--red-bg);border:1px solid var(--red-line)}
+.card .fact{margin-top:6px;font-family:var(--mono);font-size:13.5px;color:var(--ink);font-weight:500;overflow-wrap:anywhere}
+.card .why{margin-top:5px;font-size:13px;color:var(--ink-2);line-height:1.45}
+.card.no{border-color:var(--red-line);background:#FDF6F5}
+.card.no .why{color:#8C2A22}
+.card.no .ask{margin-top:8px;border-top:1px dashed var(--red-line);padding-top:8px;font-size:13px;color:var(--ink)}
+.card.no .ask b{font-weight:650}
+.card.no .ask .tag{display:inline-block;margin-left:8px;font-size:10.5px;font-weight:650;letter-spacing:.08em;text-transform:uppercase;color:var(--red);border:1px solid var(--red-line);border-radius:3px;padding:1px 6px;vertical-align:1px}
+.card.recall{background:#FBFAF6;border-style:dashed}
+.card.ghost{opacity:.5;border-style:dashed;background:transparent;transform:none}
+.card.ghost .row1{color:var(--ink-3)}
+.card.ghost .verdict{color:var(--ink-3);background:transparent;border:1px dashed var(--line-2)}
+.card.recall .row1{color:var(--ink-3)}
+.card.recall .score{margin-left:auto;font-weight:600;color:var(--ink-2)}
+.card.lit{border-color:var(--orange);box-shadow:0 0 0 3px rgba(232,89,12,.16)}
+.card.dim-out{opacity:.38}
+.card.pending .verdict{color:var(--ink-2);background:var(--brain-deep);border:1px solid var(--line-2)}
+.card.pending .verdict::after{content:"…";animation:dots 1.1s steps(3,end) infinite}
+@keyframes dots{0%{opacity:.2}50%{opacity:1}100%{opacity:.2}}
+.ledger.hush .card:not(.no){opacity:.42}
+.card.no.enter{animation:reject-in .5s cubic-bezier(.2,.8,.3,1)}
+@keyframes reject-in{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:none}}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* ---------- headline strip ---------- */
+.strip{max-width:1180px;margin:0 auto;padding:34px 28px 10px}
+.strip-grid{display:grid;grid-template-columns:repeat(3,1fr);border-top:1.5px solid var(--ink);gap:0}
+.claim{padding:20px 22px 22px;border-right:1px solid var(--line)}
+.claim:last-child{border-right:none}
+.claim .fig{display:block;font-size:38px;font-weight:850;font-stretch:112%;letter-spacing:-.02em;line-height:1;font-variant-numeric:tabular-nums}
+.claim .fig small{font-size:17px;font-weight:650;color:var(--ink-2);letter-spacing:0}
+.claim p{margin-top:8px;font-size:14.5px;font-weight:600;letter-spacing:-.003em;line-height:1.4;max-width:28ch}
+.claim .prov{margin-top:7px;font-size:12.5px;font-weight:400;color:var(--ink-3);line-height:1.5;max-width:36ch}
+.claim .prov b{color:var(--ink-2);font-weight:600}
+
+/* ---------- footer ---------- */
+.foot{max-width:1180px;margin:0 auto;padding:26px 28px 46px;display:flex;justify-content:space-between;align-items:flex-start;gap:20px;flex-wrap:wrap;border-top:1px solid var(--line);margin-top:30px}
+.foot .links{display:flex;gap:22px;flex-wrap:wrap;font-size:13.5px}
+.foot .links a{text-decoration:none;border-bottom:1px solid var(--line-2);padding-bottom:1px;color:var(--ink-2)}
+.foot .links a:hover{color:var(--ink);border-color:var(--ink-3)}
+.honesty{font-size:12.5px;color:var(--ink-3);max-width:52ch;line-height:1.55}
+
+/* ---------- responsive ---------- */
+@media (max-width:920px){
+  .top{padding:12px 18px}
+  .top-links{display:none}
+  .mast-inner{padding:44px 18px 40px}
+  .mast-media video{display:none}
+  .mast-media .mast-fallback{display:block}
+  .stage{padding:26px 14px 4px}
+  .stage-grid{grid-template-columns:1fr;gap:0}
+  .spine{height:44px}
+  .spine::before{left:8%;right:8%;top:50%;bottom:auto;width:auto;height:1.5px}
+  .pulse{top:50%;left:8%}
+  .pulse.go{animation:travelH 1s cubic-bezier(.4,0,.3,1) forwards}
+  @keyframes travelH{0%{transform:translate(-50%,-50%) scale(0)}12%{transform:translate(-50%,-50%) scale(1)}88%{left:8%;opacity:1}100%{left:88%;transform:translate(-50%,-50%) scale(.4);opacity:0}}
+  .phone,.brain{min-height:0}
+  .scope dl{grid-template-columns:104px 1fr}
+  .scope dd{overflow-wrap:anywhere}
+  .job-head .jt{font-size:16px}
+  .intake{grid-template-columns:1fr;gap:10px}
+  .plate{width:150px}
+  .strip-grid{grid-template-columns:1fr}
+  .claim{border-right:none;border-bottom:1px solid var(--line)}
+  .claim:last-child{border-bottom:none}
+}
+@media (prefers-reduced-motion:reduce){
+  .mast-media video{display:none}
+  .mast-media .mast-fallback{display:block}
+  .card,.remark.show,.estimate.show,.card.no.enter{animation:none;transition:none}
+  .wave.on i{animation:none}
+}
+</style>
+</head>
+<body>
+<!--
+THESIS: A field-service record that proves itself. The demo IS the product: one button replays a real
+job where every fact passes a write gate — and a lie from the homeowner is stopped in front of you.
+Refuses: dark "mission control" dashboards and metric-card heroes.
+OWN-WORLD: Contractor daylight. Warm paper ground, white work-panels, ink typography (Archivo, wide
+stretch for display), mono only for data values. Color is earned: green/red belong to the gate alone,
+safety-orange only as the pulse and trace. Recognizable with all content removed.
+STORY: A judge presses Run demo, watches scope fill from a photo+voice in 15s, sees the gate reject a
+contradiction with a human reason, then clicks the estimate and sees exactly which approved facts it
+stands on. Belief: "autonomy with brakes". Action: open the live dashboard and repo.
+FIRST VIEWPORT: Masthead (washed Veo field-footage, headline, one Run demo button) above the split:
+left "Mike's phone" (plate photo, voice wave, scope, stopwatch = the only big number), thin spine with
+a traveling pulse, right "the brain" (fleet chips, gate ledger). Nothing else competes.
+FORM: Pinned by the client brief (VALUE-STORY 2026-08-21 §UX/UI + Screen story beats 0-5); no roll.
+FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict,
+and DESIGN.md
+-->
+
+<header class="top">
+  <div class="wordmark">
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><rect x="7" y="1.5" width="4" height="15" rx="1.2" fill="#E8590C"/><rect x="1.5" y="7" width="15" height="4" rx="1.2" fill="#E8590C"/></svg>
+    FOREMAN+
+  </div>
+  <div class="gate-tally" aria-label="Live write-gate tally">
+    <span class="t-ok">approved <b id="tallyOk">49</b></span>
+    <span class="t-no">rejected <b id="tallyNo">4</b></span>
+  </div>
+  <nav class="top-links">
+    <a href="https://foreman-dash-112293816563.us-central1.run.app">Live dashboard</a>
+    <a href="https://github.com/retailbox-automation/foreman-plus">GitHub</a>
+  </nav>
+</header>
+
+<section class="mast">
+  <div class="mast-media" aria-hidden="true">
+    <video autoplay muted loop playsinline poster="assets/hero-poster.jpg" src="assets/hero.mp4"></video>
+    <img class="mast-fallback" src="assets/hero-poster.jpg" alt="">
+  </div>
+  <div class="mast-inner">
+    <h1>Photograph it. Say it. Prove it.</h1>
+    <p class="lede">A technician photographs the nameplate and talks. <b>Foreman+ returns a verified job record in about 15 seconds</b> — a price you can quote before leaving the driveway, where every number survives the question <b>“where did this come from?”</b>, and the next person arrives with the property’s memory instead of starting from zero.</p>
+    <div class="mast-cta">
+      <button class="run-btn" id="runBtn" data-state="idle">
+        <svg width="13" height="14" viewBox="0 0 13 14" aria-hidden="true"><path d="M1.5 1.6c0-.9 1-1.5 1.8-1L11.9 6c.8.5.8 1.6 0 2.1L3.3 13.4c-.8.5-1.8-.1-1.8-1V1.6Z" fill="currentColor"/></svg>
+        <span id="runLabel">Run demo</span>
+      </button>
+      <span class="mast-note">60 seconds · replays a real job from the live gate journal</span>
+    </div>
+  </div>
+</section>
+
+<main class="stage">
+  <div class="stage-grid">
+
+    <!-- LEFT: the phone -->
+    <section aria-label="Mike’s phone — what the technician sees">
+      <div class="phone">
+        <div class="job-head">
+          <span class="jt">Water heater — leaking</span>
+          <span class="jid">job J-VRTX1</span>
+        </div>
+
+        <div class="intake">
+          <div class="plate">
+            <img src="assets/nameplate.jpg" alt="Technician’s photo: Rheem rating plate on the tank — model 82V40-2, serial RH04-118276, manufactured 05/2004" width="800" height="533">
+          </div>
+          <div class="voice">
+            <div class="vlabel">
+              <svg width="12" height="15" viewBox="0 0 12 15" aria-hidden="true"><rect x="3.5" y="1" width="5" height="8.4" rx="2.5" stroke="#5B5D62" stroke-width="1.4" fill="none"/><path d="M1.2 7.4a4.8 4.8 0 0 0 9.6 0M6 12.4v1.8" stroke="#5B5D62" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg>
+              Voice note
+            </div>
+            <div class="wave" id="wave" aria-hidden="true"></div>
+            <p class="utterance" id="utter"></p>
+          </div>
+        </div>
+
+        <div class="scope">
+          <h3>Scope — filled from photo + voice</h3>
+          <dl>
+            <dt>Equipment</dt><dd id="f-model">—</dd>
+            <dt>Serial</dt><dd id="f-serial">—</dd>
+            <dt>Manufactured</dt><dd id="f-date" class="hold">—</dd>
+            <dt>Issue</dt><dd id="f-issue">—</dd>
+          </dl>
+        </div>
+
+        <div class="remark" id="remark">
+          <span class="who">Homeowner, at the door</span>
+          <q>That heater’s only a couple years old — the previous owners put it in.</q>
+        </div>
+
+        <button class="estimate" id="estimate" aria-label="Verified estimate. Click to trace which approved facts it is built from.">
+          <span class="e-h">Verified estimate</span>
+          <span class="sum">Replace 40-gal electric water heater — 3 hrs labor</span>
+          <span class="e-list">
+            <span class="e-item">40-gallon electric water heater</span>
+            <span class="e-item">water heater installation kit</span>
+          </span>
+          <span class="prov-hint">Click to see which approved facts this stands on ↗</span>
+        </button>
+
+        <div class="clock" id="clock">
+          <span class="num" id="clockNum">0.0</span><span class="unit">sec</span>
+          <span class="cap">photo + voice → verified record</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- SPINE -->
+    <div class="spine" aria-hidden="true"><span class="pulse" id="pulse"></span></div>
+
+    <!-- RIGHT: the brain -->
+    <section aria-label="The brain — every write through the gate">
+      <div class="brain">
+        <div class="fleet" aria-label="Agent fleet">
+          <span class="node" id="n-foreman"><i></i>foreman</span>
+          <span class="node" id="n-estimator"><i></i>estimator</span>
+          <span class="node" id="n-closer"><i></i>closer</span>
+        </div>
+        <div class="ledger-head">
+          <h2>Write gate — journal</h2>
+          <span class="sub">Gemini verifier · fail-closed</span>
+        </div>
+        <div class="ledger" id="ledger"></div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<section class="strip" aria-label="What this proves">
+  <div class="strip-grid">
+    <div class="claim">
+      <span class="fig">15<small> sec</small></span>
+      <p>From photo + voice to a verified record.</p>
+      <p class="prov">Measured live: one multimodal <b>Gemini 3.7 Flash</b> call on Vertex AI read the nameplate and the complaint in a single pass.</p>
+    </div>
+    <div class="claim">
+      <span class="fig">49 · 4<small> approved · rejected</small></span>
+      <p>No fact enters memory without surviving the gate.</p>
+      <p class="prov">Live journal, each verdict with a written reason. The verifier fails closed — no verdict, no write.</p>
+    </div>
+    <div class="claim">
+      <span class="fig">0.71<small> recall</small></span>
+      <p>The property remembers — across visits and people.</p>
+      <p class="prov">Semantic recall (<b>pgvector</b>, Cloud SQL) briefed this estimate with two prior jobs at 0.71 and 0.66 similarity.</p>
+    </div>
+  </div>
+</section>
+
+<footer class="foot">
+  <div class="links">
+    <a href="https://foreman-dash-112293816563.us-central1.run.app">Live ops dashboard</a>
+    <a href="https://foreman-dash-112293816563.us-central1.run.app/doc/J-VRTX1">Homeowner document (J-VRTX1)</a>
+    <a href="https://foreman-closer-112293816563.us-central1.run.app/.well-known/agent-card.json">A2A agent card</a>
+    <a href="https://github.com/retailbox-automation/foreman-plus">Source on GitHub</a>
+  </div>
+  <p class="honesty">Demo playback is scripted for repeatability from real entries in the live gate journal (job J-VRTX1). The nameplate is a synthetic re-creation of the recorded plate data. Header footage generated with Veo 3.1 on Vertex AI.</p>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  var $=function(id){return document.getElementById(id)};
+  var reduced=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // waveform bars
+  var wave=$("wave");for(var i=0;i<26;i++){wave.appendChild(document.createElement("i"))}
+
+  var ledger=$("ledger"),timers=[],playing=false;
+  var K=reduced?0.4:1; // ONE clock: every beat and the stopwatch share this scale
+  function at(ms,fn){timers.push(setTimeout(fn,ms*K))}
+  function clearTimers(){timers.forEach(clearTimeout);timers=[]}
+
+  function pulse(){var p=$("pulse");p.classList.remove("go");void p.offsetWidth;p.classList.add("go")}
+  function node(id,on){$( "n-"+id).classList.toggle("on",on)}
+  function setField(id,val,src){var el=$(id);el.innerHTML=val+(src?' <span class="src">'+src+"</span>":"");el.classList.add("set")}
+  function tallyPulse(id){var el=$(id);el.style.transition="transform .18s";el.style.transform="scale(1.25)";setTimeout(function(){el.style.transform=""},220*K)}
+
+  function card(kind,head,fact,why,extra){
+    var c=document.createElement("div");c.className="card "+kind;
+    var v=kind==="no"?"REJECTED":kind==="ok"?"APPROVED":"RECALL";
+    c.innerHTML='<div class="row1"><span class="verdict">'+v+'</span><span>'+head+"</span>"+(extra&&extra.score?'<span class="score">'+extra.score+"</span>":"")+"</div>"
+      +(fact?'<div class="fact">'+fact+"</div>":"")
+      +(why?'<div class="why">'+why+"</div>":"")
+      +(extra&&extra.ask?'<div class="ask"><b>'+extra.ask+'</b><span class="tag">needs confirmation</span></div>':"");
+    ledger.prepend(c);
+    requestAnimationFrame(function(){requestAnimationFrame(function(){c.classList.add("show")})});
+    return c;
+  }
+  // a fact arrives at the gate first, then the verifier's verdict flips it
+  function pendingCard(head,fact){
+    var c=card("pending ok",head,fact,"");
+    c.querySelector(".verdict").textContent="GATE";
+    return c;
+  }
+  function flip(c,kind,why,extra){
+    c.classList.remove("pending","ok","no");c.classList.add(kind);
+    c.querySelector(".verdict").textContent=kind==="no"?"REJECTED":"APPROVED";
+    if(why){var w=document.createElement("div");w.className="why";w.textContent=why;c.appendChild(w)}
+    if(extra&&extra.ask){var a=document.createElement("div");a.className="ask";
+      a.innerHTML="<b></b><span class='tag'>needs confirmation</span>";a.querySelector("b").textContent=extra.ask;c.appendChild(a)}
+    if(kind==="no"){c.classList.add("enter")}
+    tallyPulse(kind==="no"?"tallyNo":"tallyOk");
+    return c;
+  }
+
+  // stopwatch — driven by the same K
+  var raf=null;
+  function clockRun(toSec,ms){
+    var num=$("clockNum"),start=performance.now(),dur=ms*K;
+    cancelAnimationFrame(raf);
+    (function tick(t){
+      var k=Math.min(1,(t-start)/dur);
+      num.textContent=(k*toSec).toFixed(1);
+      if(k<1){raf=requestAnimationFrame(tick)}else{$("clock").classList.add("done")}
+    })(start);
+  }
+
+  var cards={};
+  function reset(){
+    clearTimers();cancelAnimationFrame(raf);
+    ledger.innerHTML="";ledger.classList.remove("hush");cards={};
+    ["f-model","f-serial","f-date","f-issue"].forEach(function(id){var el=$(id);el.textContent="—";el.classList.remove("set","kept")});
+    $("clockNum").textContent="0.0";$("clock").classList.remove("done");
+    $("remark").classList.remove("show");$("estimate").classList.remove("show","tracing");
+    $("utter").textContent="";wave.classList.remove("on");
+    ["foreman","estimator","closer"].forEach(function(n){node(n,false)});
+  }
+
+  function trace(on){
+    ["c-model","c-date","c-issue","c-est"].forEach(function(k){if(cards[k])cards[k].classList.toggle("lit",on)});
+    if(cards["c-reject"])cards["c-reject"].classList.toggle("dim-out",on);
+    $("estimate").classList.toggle("tracing",on);
+  }
+
+  function play(){
+    if(playing)return;
+    playing=true;
+    reset();
+    var btn=$("runBtn");btn.dataset.state="playing";btn.setAttribute("aria-disabled","true");$("runLabel").textContent="Replaying…";
+
+    // Beat 0 — intake appears, clock starts
+    wave.classList.add("on");
+    $("utter").innerHTML="<q>it’s leaking from the bottom — no hot water since yesterday</q>";
+    clockRun(15.3,15300);
+
+    // Beat 1 — scope fills as recognition lands (0–15s); first fact reaches the gate before the clock stops
+    at(2600,function(){node("foreman",true);pulse();setField("f-model","Rheem 82V40-2","photo")});
+    at(4200,function(){setField("f-serial","RH04-118276","photo")});
+    at(5600,function(){setField("f-date","05 / 2004","photo")});
+    at(7400,function(){wave.classList.remove("on");setField("f-issue","leaking from the bottom","voice")});
+    at(10500,function(){pulse();cards["c-model"]=pendingCard("foreman · job:J-VRTX1 · equipment_model","Rheem 82V40-2")});
+    at(13200,function(){flip(cards["c-model"],"ok","Plausible; does not contradict any existing fact.")});
+
+    // Beat 2 — the gate settles into an even green rhythm (~15–26s)
+    at(15600,function(){pulse();cards["c-date"]=pendingCard("foreman · job:J-VRTX1 · manufacture_date","2004")});
+    at(17800,function(){flip(cards["c-date"],"ok","Matches the photographed nameplate; consistent with memory.")});
+    at(20200,function(){pulse();cards["c-issue"]=pendingCard("foreman · job:J-VRTX1 · issue","water heater leaking from the bottom")});
+    at(22400,function(){flip(cards["c-issue"],"ok","Consistent, plausible, no tampering.")});
+
+    // Beat 3 — THE PEAK: the homeowner's remark hits the gate (~25–33s)
+    at(25200,function(){$("remark").classList.add("show")});
+    at(27200,function(){pulse();cards["c-reject"]=pendingCard("foreman · job:J-VRTX1 · equipment_age","“a couple of years old”")});
+    at(29400,function(){
+      flip(cards["c-reject"],"no",
+        "Contradicts an established fact: manufacture date 05/2004, read from the nameplate photo. Source of this claim: verbal remark — unconfirmed.",
+        {ask:"Nameplate says 2004 — client says ~2 years. Which is right?"});
+      ledger.classList.add("hush"); // two seconds where nothing else moves
+    });
+    at(31600,function(){ledger.classList.remove("hush");$("f-date").classList.add("kept")}); // the field pointedly does NOT change
+
+    // Beat 4 — recall briefs the estimate (~34–44s)
+    at(34500,function(){node("estimator",true);pulse();
+      cards["c-r1"]=card("recall","memory · J-970","40-gal electric replaced after tank corrosion — same street, 2024.","",{score:"0.71"})});
+    at(36600,function(){cards["c-r2"]=card("recall","memory · J-MM2","Leak traced to expansion-tank failure; heater kept.","",{score:"0.66"})});
+    at(39200,function(){pulse();cards["c-est"]=pendingCard("estimator · job:J-VRTX1 · estimate","3 hrs · 40-gal electric heater + install kit")});
+    at(41600,function(){flip(cards["c-est"],"ok","Well-formed, plausible, consistent with memory and both recalled jobs.")});
+    at(42800,function(){$("estimate").classList.add("show")});
+
+    // Beat 5 — provenance flash (~45s), then hand over to the visitor's own click
+    at(44200,function(){node("closer",true);pulse()});
+    at(45200,function(){trace(true)});
+    at(48200,function(){trace(false);playing=false;btn.dataset.state="idle";btn.removeAttribute("aria-disabled");$("runLabel").textContent="Run again"});
+  }
+
+  $("runBtn").addEventListener("click",play);
+  $("estimate").addEventListener("click",function(){trace(true);setTimeout(function(){trace(false)},2600)});
+
+  // Idle preview = beat 0–1 only: the intake and one settled approval. The rejection is Run demo's story.
+  setField("f-model","Rheem 82V40-2","photo");setField("f-serial","RH04-118276","photo");
+  setField("f-date","05 / 2004","photo");setField("f-issue","leaking from the bottom","voice");
+  cards["c-model"]=card("ok","foreman · job:J-VRTX1 · equipment_model","Rheem 82V40-2","Plausible; does not contradict any existing fact.");
+  var hint=document.createElement("div");hint.className="ledger-hint";
+  hint.innerHTML="This is the first of six gate decisions on this job. <b>Run demo</b> replays all of them — including the one the gate refused.";
+  ledger.appendChild(hint);
+  // ghost the decisions the hint promises, so the brain reads occupied, not empty
+  [["foreman · manufacture_date","from the nameplate photo"],
+   ["foreman · issue","from the voice note"],
+   ["foreman · equipment_age","the homeowner’s remark"],
+   ["estimator · estimate","briefed by property recall"]].forEach(function(g){
+    var c=card("ghost",g[0],"",g[1]);c.querySelector(".verdict").textContent="QUEUED";
+    ledger.appendChild(c); // card() prepends; move ghosts below the hint
+  });
+})();
+</script>
+</body>
+</html>
