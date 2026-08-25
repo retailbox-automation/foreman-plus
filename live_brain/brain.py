@@ -198,8 +198,9 @@ class LiveBrain:
                     self._session = session
                     self._goaway = False
                     self._connected.set()
-                    log.info("live session connected (resume=%s)",
-                             bool(self._resumption_handle))
+                    log.info("live session connected (resume=%s, take_photo_tool=%s)",
+                             bool(self._resumption_handle),
+                             self.cfg.tool_executor is not None)
                     backoff = self.cfg.reconnect_backoff_s
                     sender = asyncio.create_task(self._frame_trickle(session))
                     try:
