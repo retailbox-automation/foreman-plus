@@ -51,6 +51,13 @@ class LatestFrame:
         self._consumed_ts = self._ts
         return self._data
 
+    def peek(self, max_age_s: float = 120.0) -> bytes | None:
+        """Latest frame even if already consumed — for a question that should
+        still see what the tech is looking at (bounded by staleness)."""
+        if self._data is None or time.monotonic() - self._ts > max_age_s:
+            return None
+        return self._data
+
     @property
     def age_s(self) -> float | None:
         return None if self._data is None else time.monotonic() - self._ts
@@ -174,12 +181,16 @@ class LiveBrain:
             loop = asyncio.get_running_loop()
             self._turn_buf = []
             self._pending = loop.create_future()
-            data = self.frame.take_fresh()
+            # The frame rides INSIDE the question's turn. A frame pushed via
+            # send_realtime_input just before the text is not reliably attached
+            # yet — verified 25.08: the model answered about a "washing machine"
+            # / "outdoor AC unit" for a water-heater plate. In-turn = guaranteed.
+            parts: list[types.Part] = []
+            data = self.frame.take_fresh() or self.frame.peek()
             if data is not None:
-                await session.send_realtime_input(
-                    media=types.Blob(data=data, mime_type="image/jpeg"))
-            await session.send_client_content(
-                turns=types.Content(role="user", parts=[types.Part(text=text)]))
+                parts.append(types.Part(inline_data=types.Blob(data=data, mime_type="image/jpeg")))
+            parts.append(types.Part(text=text))
+            await session.send_client_content(turns=types.Content(role="user", parts=parts))
             try:
                 return await asyncio.wait_for(self._pending, self.cfg.ask_timeout_s)
             finally:

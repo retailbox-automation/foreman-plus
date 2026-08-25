@@ -83,7 +83,7 @@ class FakeSession:
 
 
 @pytest.mark.asyncio
-async def test_ask_sends_fresh_frame_then_text():
+async def test_ask_puts_the_frame_inside_the_question_turn():
     brain = make_brain()
     fake = FakeSession(brain, "Turn the valve clockwise.")
     brain._session = fake
@@ -91,11 +91,24 @@ async def test_ask_sends_fresh_frame_then_text():
     brain.push_frame(b"frame-bytes")
     reply = await brain.ask("what now?")
     assert reply == "Turn the valve clockwise."
-    assert [k for k, _ in fake.sent] == ["frame", "text"]
-    # second ask without a new frame: no frame re-sent
-    reply2 = await brain.ask("and now?")
-    assert reply2 == "Turn the valve clockwise."
-    assert [k for k, _ in fake.sent] == ["frame", "text", "text"]
+    kinds = [k for k, _ in fake.sent]
+    assert kinds == ["text"]  # never a separate realtime frame send in ask()
+    parts = fake.sent[0][1].parts
+    assert parts[0].inline_data.data == b"frame-bytes" and parts[1].text == "what now?"
+    # second ask: the same (recent) frame still rides along — the tech is still
+    # looking at the same thing
+    await brain.ask("and now?")
+    assert len(fake.sent[1][1].parts) == 2
+
+
+@pytest.mark.asyncio
+async def test_ask_without_any_frame_is_text_only():
+    brain = make_brain()
+    fake = FakeSession(brain, "Point the camera at the unit.")
+    brain._session = fake
+    brain._connected.set()
+    await brain.ask("what is this?")
+    assert [p.text for p in fake.sent[0][1].parts] == ["what is this?"]
 
 
 @pytest.mark.asyncio
