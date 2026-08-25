@@ -188,6 +188,26 @@ async def test_tool_call_ignored_without_executor():
     assert fake.tool_responses == []
 
 
+def test_tool_turn_protocol_holds_the_pending_ask():
+    """Live completes the tool-REQUEST turn empty; the answer comes in a NEW
+    turn after tool_response. The empty completion must not resolve ask()."""
+    async def executor(name, args):
+        return {"ok": True}
+    brain = make_brain(tool_executor=executor)
+    brain._session = FakeToolSession()
+    loop = asyncio.new_event_loop()
+    try:
+        brain._pending = loop.create_future()
+        brain._handle_message(tool_msg())                 # model requests the tool
+        brain._handle_message(msg(turn_complete=True))    # empty tool-request turn
+        assert not brain._pending.done()                  # ask still waiting
+        brain._handle_message(msg(text="I see a breaker panel."))
+        brain._handle_message(msg(turn_complete=True))    # real answer turn
+        assert brain._pending.result() == "I see a breaker panel."
+    finally:
+        loop.close()
+
+
 # -------------------------------------------------------------------- sources
 def test_latest_jpeg_picks_newest(tmp_path: Path):
     assert latest_jpeg(tmp_path) is None

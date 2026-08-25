@@ -107,6 +107,10 @@ class LiveBrain:
             self._goaway = True
         tc = getattr(msg, "tool_call", None)
         if tc is not None and self.cfg.tool_executor is not None:
+            # The model asked for a tool: its CURRENT turn will complete empty,
+            # and the real answer arrives in a NEW turn after tool_response —
+            # don't resolve the pending ask on that empty completion.
+            self._tool_pending = True
             # Execute off the receive loop; the session keeps flowing.
             asyncio.create_task(self._run_tools(list(tc.function_calls or [])))
         text = getattr(msg, "text", None)
@@ -116,6 +120,9 @@ class LiveBrain:
         if sc is not None and getattr(sc, "turn_complete", False):
             reply = "".join(self._turn_buf).strip()
             self._turn_buf = []
+            if self._tool_pending and not reply:
+                return  # tool round-trip in progress; the answer comes in the next turn
+            self._tool_pending = False
             if self._pending is not None and not self._pending.done():
                 self._pending.set_result(reply)
 
@@ -142,6 +149,8 @@ class LiveBrain:
 
     #: name of the last tool the model invoked during the current ask (or None)
     tool_ran: str | None = None
+    #: a tool round-trip is in flight for the current ask
+    _tool_pending: bool = False
 
     def _connect_config(self) -> types.LiveConnectConfig:
         return types.LiveConnectConfig(
@@ -250,6 +259,7 @@ class LiveBrain:
             loop = asyncio.get_running_loop()
             self._turn_buf = []
             self.tool_ran = None
+            self._tool_pending = False
             self._pending = loop.create_future()
             # The frame rides INSIDE the question's turn. A frame pushed via
             # send_realtime_input just before the text is not reliably attached
@@ -278,7 +288,14 @@ class LiveBrain:
                          f"User: {text}"))
             await session.send_client_content(turns=types.Content(role="user", parts=parts))
             try:
-                reply = await asyncio.wait_for(self._pending, self.cfg.ask_timeout_s)
+                try:
+                    reply = await asyncio.wait_for(self._pending, self.cfg.ask_timeout_s)
+                except asyncio.TimeoutError:
+                    # A tool round-trip (photo capture is up to ~35s) legitimately
+                    # outlives the base budget — extend once, then give up.
+                    if not self._tool_pending:
+                        raise
+                    reply = await asyncio.wait_for(self._pending, 45)
             finally:
                 self._pending = None
             # The model drove its own camera: the executor pushed the new frame
