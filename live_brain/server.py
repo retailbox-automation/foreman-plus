@@ -194,8 +194,9 @@ def make_app(brain: LiveBrain, frame_dir: Path, speak) -> FastAPI:
         except (ConnectionError, asyncio.TimeoutError) as e:
             reply = "Sorry, I lost the link for a second. Say that again."
             log.warning("ask failed: %s", e)
-        log.info("ASK frame_age=%s | Q: %s | A: %s",
-                 f"{age:.0f}s" if age is not None else "none", u.text, reply)
+        log.info("ASK frame_age=%s tool=%s | Q: %s | A: %s",
+                 f"{age:.0f}s" if age is not None else "none",
+                 brain.tool_ran, u.text, reply)
         if speak is not None and reply:
             try:
                 await speak(reply)
@@ -206,14 +207,34 @@ def make_app(brain: LiveBrain, frame_dir: Path, speak) -> FastAPI:
     return app
 
 
+def make_bridge_tool_executor(bridge_url: str, debug_key: str):
+    """Executor for the brain's native tools: the glasses bridge is its hands.
+    take_photo → bridge /debug/photo (which also pushes the frame back to us)."""
+    async def execute(name: str, args: dict) -> dict:
+        if name != "take_photo":
+            return {"ok": False, "error": f"unknown tool {name}"}
+        async with httpx.AsyncClient(timeout=45) as http:
+            r = await http.post(f"{bridge_url}/debug/photo",
+                                headers={"x-debug-key": debug_key})
+            body = r.json()
+        ok = bool(body.get("ok"))
+        return {"ok": ok, "note": "photo captured; the frame follows in the next message"
+                if ok else "capture failed — ask the user to press the camera button"}
+    return execute
+
+
 def main() -> None:
     logging.basicConfig(level=logging.INFO)
     load_dotenv(Path(__file__).resolve().parent.parent / ".env")
     frame_dir = Path(os.environ.get("FRAME_DIR", "captures/frames"))
     frame_dir.mkdir(parents=True, exist_ok=True)
+    bridge_url = os.environ.get("GLASS_BRIDGE_URL", "")
+    bridge_key = os.environ.get("GLASS_BRIDGE_DEBUG_KEY", "")
     cfg = BrainConfig(
         project=os.environ["GOOGLE_CLOUD_PROJECT"],
         system_instruction=GUIDANCE_PERSONA,
+        tool_executor=make_bridge_tool_executor(bridge_url, bridge_key)
+        if bridge_url and bridge_key else None,
     )
     say_url = os.environ.get("BRIDGE_SAY_URL")
     speak = None

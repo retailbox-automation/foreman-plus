@@ -337,11 +337,13 @@ export class GlassIntakeCore {
         }
         try {
           this.trace("brain", { phase: "ask", text: question });
+          // The brain drives its own camera natively (take_photo tool → the
+          // brain calls our /debug/photo → we capture and push the frame).
+          // A long silence while that happens reads as "it died", so a
+          // question can legitimately take photo-time: widen patience here.
           let reply = await this.o.brain.ask(question);
           this.trace("brain", { phase: "reply", text: reply });
-          // The brain asks for eyes: capture and re-ask with the fresh frame.
-          // This closes the "why can't YOU take a photo, you just did" seam —
-          // to the tech, the assistant and the camera are ONE system.
+          // Legacy marker fallback (older brain revision): capture + re-ask.
           if (reply.includes("[TAKE_PHOTO]")) {
             this.trace("brain", { phase: "auto-photo", text: question });
             const got = await this.capturePhoto(session); // speaks "Photo captured."

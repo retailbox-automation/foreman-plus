@@ -59,7 +59,9 @@ export class LiveBrainClient extends IdTokenCaller {
   }
 
   async ask(text: string): Promise<string> {
-    const body = (await this.postJson("/utterance", { text }, 30_000)) as { reply?: string };
+    // 75s: a native take_photo inside the turn adds capture (up to ~35s) +
+    // a follow-up model turn on top of the base answer time.
+    const body = (await this.postJson("/utterance", { text }, 75_000)) as { reply?: string };
     return body?.reply ?? "";
   }
 

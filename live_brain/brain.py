@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
 from google import genai
@@ -28,6 +29,20 @@ class BrainConfig:
     frame_interval_s: float = 2.0
     ask_timeout_s: float = 25.0
     reconnect_backoff_s: float = 1.0
+    # Native tool calling: the executor runs a named tool (e.g. take_photo via
+    # the glasses bridge) and returns a JSON-able result dict. None = no tools.
+    tool_executor: "ToolExecutor | None" = None
+
+
+ToolExecutor = Callable[[str, dict], Awaitable[dict]]
+
+TAKE_PHOTO_DECL = types.FunctionDeclaration(
+    name="take_photo",
+    description=("Capture a fresh photo through the technician's glasses camera. "
+                 "Call this whenever you need to SEE what they are looking at — "
+                 "they moved, they ask you to look, or your view is stale."),
+    parameters=types.Schema(type=types.Type.OBJECT, properties={}),
+)
 
 
 class LatestFrame:
@@ -90,6 +105,10 @@ class LiveBrain:
                 self._resumption_handle = handle
         if getattr(msg, "go_away", None) is not None:
             self._goaway = True
+        tc = getattr(msg, "tool_call", None)
+        if tc is not None and self.cfg.tool_executor is not None:
+            # Execute off the receive loop; the session keeps flowing.
+            asyncio.create_task(self._run_tools(list(tc.function_calls or [])))
         text = getattr(msg, "text", None)
         if text:
             self._turn_buf.append(text)
@@ -100,12 +119,41 @@ class LiveBrain:
             if self._pending is not None and not self._pending.done():
                 self._pending.set_result(reply)
 
+    async def _run_tools(self, calls) -> None:
+        session = self._session
+        if session is None:
+            return
+        responses = []
+        for fc in calls:
+            name = getattr(fc, "name", "")
+            args = dict(getattr(fc, "args", None) or {})
+            log.info("tool_call %s(%s)", name, args)
+            self.tool_ran = name
+            try:
+                result = await self.cfg.tool_executor(name, args)  # type: ignore[misc]
+            except Exception as e:  # noqa: BLE001 - report failure to the model
+                result = {"ok": False, "error": str(e)[:200]}
+            responses.append(types.FunctionResponse(
+                id=getattr(fc, "id", None), name=name, response=result))
+        try:
+            await session.send_tool_response(function_responses=responses)
+        except Exception as e:  # noqa: BLE001
+            log.warning("send_tool_response failed: %s", e)
+
+    #: name of the last tool the model invoked during the current ask (or None)
+    tool_ran: str | None = None
+
     def _connect_config(self) -> types.LiveConnectConfig:
         return types.LiveConnectConfig(
             response_modalities=[types.Modality.TEXT],
-            # Grounding: lets the brain actually search (model manuals, part
-            # prices) instead of refusing — Mikhail's ask, 25.08 walkthrough.
-            tools=[types.Tool(google_search=types.GoogleSearch())],
+            # Grounding + hands: search the web AND drive its own camera.
+            # Mixing GoogleSearch with function declarations verified live
+            # 25.08 (all three tool layouts PASS on gemini-live-2.5-flash).
+            tools=[
+                types.Tool(google_search=types.GoogleSearch()),
+                *([types.Tool(function_declarations=[TAKE_PHOTO_DECL])]
+                  if self.cfg.tool_executor else []),
+            ],
             system_instruction=self.cfg.system_instruction or None,
             # transparent=True is what adk-python's production reconnect loop
             # sets on the Vertex backend (base_llm_flow.py) — the server carries
@@ -200,6 +248,7 @@ class LiveBrain:
                 raise ConnectionError("no live session")
             loop = asyncio.get_running_loop()
             self._turn_buf = []
+            self.tool_ran = None
             self._pending = loop.create_future()
             # The frame rides INSIDE the question's turn. A frame pushed via
             # send_realtime_input just before the text is not reliably attached
@@ -226,6 +275,25 @@ class LiveBrain:
                          f"User: {text}"))
             await session.send_client_content(turns=types.Content(role="user", parts=parts))
             try:
-                return await asyncio.wait_for(self._pending, self.cfg.ask_timeout_s)
+                reply = await asyncio.wait_for(self._pending, self.cfg.ask_timeout_s)
             finally:
                 self._pending = None
+            # The model drove its own camera: the executor pushed the new frame
+            # into self.frame, but a frame cannot ride a tool_response — attach
+            # it in a follow-up turn so the answer is about the ACTUAL capture
+            # (in-turn attach is the only reliable path, probe 25.08).
+            if self.tool_ran == "take_photo" and self.frame.peek() is not None:
+                self._turn_buf = []
+                self._pending = loop.create_future()
+                await session.send_client_content(turns=types.Content(role="user", parts=[
+                    types.Part(inline_data=types.Blob(
+                        data=self.frame.peek(), mime_type="image/jpeg")),
+                    types.Part(text="[SYSTEM: this is the photo take_photo just captured. "
+                                    "Answer the user's question from it.]"),
+                ]))
+                try:
+                    follow = await asyncio.wait_for(self._pending, self.cfg.ask_timeout_s)
+                finally:
+                    self._pending = None
+                return follow or reply
+            return reply

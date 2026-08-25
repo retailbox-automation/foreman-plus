@@ -116,10 +116,14 @@ h1{font-size:22px;margin:0 0 4px} .s{color:${connected ? "#4ade80" : "#f87171"};
         void h(req, res, s);
       };
 
-    app.get("/debug/trace", guarded(async (req, res) => {
-      const n = Math.min(Number((req as unknown as { query?: { n?: string } }).query?.n ?? 100), TRACE_MAX);
+    // NB: trace is readable WITHOUT a glasses session — that's exactly when
+    // you need the post-mortem (deliberately not using guarded()).
+    app.get("/debug/trace", (req, res) => {
+      if (req.get("x-debug-key") !== DEBUG_KEY) { res.status(404).end(); return; }
+      const raw = Number((req as unknown as { query?: { n?: string } }).query?.n ?? 100);
+      const n = Math.min(Number.isFinite(raw) ? raw : 100, TRACE_MAX);
       res.json({ ok: true, events: traceBuf.slice(-n) });
-    }));
+    });
 
     app.get("/debug/state", guarded(async (_req, res, s) => {
       const sess = s as unknown as {

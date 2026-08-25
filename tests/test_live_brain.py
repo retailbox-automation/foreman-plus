@@ -9,8 +9,9 @@ from live_brain.brain import BrainConfig, LatestFrame, LiveBrain
 from live_brain.sources import latest_jpeg
 
 
-def make_brain() -> LiveBrain:
-    return LiveBrain(BrainConfig(project="test-project"), client=object())
+def make_brain(tool_executor=None) -> LiveBrain:
+    return LiveBrain(BrainConfig(project="test-project", tool_executor=tool_executor),
+                     client=object())
 
 
 # ---------------------------------------------------------------- LatestFrame
@@ -123,6 +124,68 @@ async def test_ask_when_disconnected_times_out():
     brain.cfg.ask_timeout_s = 0.05
     with pytest.raises(asyncio.TimeoutError):
         await brain.ask("anyone there?")
+
+
+# ------------------------------------------------------------ native tool calls
+class FakeToolSession:
+    """Session for the tool-call path: records tool responses and content."""
+    def __init__(self):
+        self.tool_responses = []
+        self.sent = []
+
+    async def send_tool_response(self, function_responses=None):
+        self.tool_responses.append(function_responses)
+
+    async def send_client_content(self, turns=None, **kw):
+        self.sent.append(turns)
+
+
+def tool_msg(name="take_photo", call_id="c1"):
+    fc = SimpleNamespace(name=name, args={}, id=call_id)
+    return SimpleNamespace(text=None, server_content=None, session_resumption_update=None,
+                           go_away=None, tool_call=SimpleNamespace(function_calls=[fc]))
+
+
+@pytest.mark.asyncio
+async def test_tool_call_executes_and_responds():
+    ran = []
+    async def executor(name, args):
+        ran.append(name)
+        return {"ok": True}
+    brain = make_brain(tool_executor=executor)
+    fake = FakeToolSession()
+    brain._session = fake
+    brain._handle_message(tool_msg())
+    await asyncio.sleep(0)  # let the created task run
+    await asyncio.sleep(0)
+    assert ran == ["take_photo"]
+    assert brain.tool_ran == "take_photo"
+    fr = fake.tool_responses[0][0]
+    assert fr.name == "take_photo" and fr.response == {"ok": True}
+
+
+@pytest.mark.asyncio
+async def test_tool_executor_failure_is_reported_not_raised():
+    async def executor(name, args):
+        raise RuntimeError("bridge down")
+    brain = make_brain(tool_executor=executor)
+    fake = FakeToolSession()
+    brain._session = fake
+    brain._handle_message(tool_msg())
+    for _ in range(3):
+        await asyncio.sleep(0)
+    fr = fake.tool_responses[0][0]
+    assert fr.response["ok"] is False and "bridge down" in fr.response["error"]
+
+
+@pytest.mark.asyncio
+async def test_tool_call_ignored_without_executor():
+    brain = make_brain()
+    fake = FakeToolSession()
+    brain._session = fake
+    brain._handle_message(tool_msg())
+    await asyncio.sleep(0)
+    assert fake.tool_responses == []
 
 
 # -------------------------------------------------------------------- sources
