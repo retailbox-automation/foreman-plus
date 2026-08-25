@@ -61,7 +61,38 @@ class ForemanGlassBridge extends AppServer {
 
   constructor(opts: ConstructorParameters<typeof AppServer>[0]) {
     super(opts);
+    this.setupWebview();
     if (DEBUG_KEY) this.setupDebugRoutes();
+  }
+
+  /** MentraOS opens /webview when the user taps the app card. No secrets here —
+   *  just the voice cheat-sheet and a coarse status. */
+  private setupWebview(): void {
+    const app = this.getExpressApp() as unknown as {
+      get(p: string, h: (req: unknown, res: { set(h: string, v: string): unknown; send(b: string): void }) => void): void;
+    };
+    app.get("/webview", (_req, res) => {
+      const connected = this.currentSession !== null;
+      res.set("content-type", "text/html; charset=utf-8");
+      res.send(`<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Foreman+ Glass Intake</title><style>
+body{font-family:-apple-system,system-ui,sans-serif;background:#131A22;color:#E8EDF2;margin:0;padding:28px 22px}
+h1{font-size:22px;margin:0 0 4px} .s{color:${connected ? "#4ade80" : "#f87171"};font-size:14px;margin-bottom:22px}
+.card{background:#1c2530;border-radius:14px;padding:16px 18px;margin-bottom:12px}
+.say{color:#FF6A00;font-weight:600} p{margin:6px 0;font-size:15px;line-height:1.45} .hint{color:#8b98a5;font-size:13px}
+</style></head><body>
+<h1>Foreman+ Glass Intake</h1>
+<div class="s">${connected ? "● Connected to your glasses" : "● Waiting for the glasses session…"}</div>
+<div class="card"><p><span class="say">"Hey Mentra"</span> — wake me up (I sleep unless called)</p>
+<p><span class="say">"Take a photo"</span> — capture what you're looking at (one shutter)</p>
+<p><span class="say">"Can you see it?"</span> — I describe your latest photo</p>
+<p>Describe the problem in your own words — it becomes the job's notes</p>
+<p><span class="say">"Send it"</span> — photo + notes go to the fleet; the scope comes back in your ear</p>
+<p><span class="say">"Start over"</span> — fresh job, fresh conversation</p>
+<p><span class="say">"Quiet"</span> — I stop listening until you wake me</p></div>
+<p class="hint">The camera button works too, but the glasses' own camera fires alongside it — voice capture is a single shutter. Everything runs hands-free; this screen is just the cheat-sheet.</p>
+</body></html>`);
+    });
   }
 
   /** Operator remote control: lets us trigger photo/stream/say and pull the
