@@ -128,6 +128,31 @@ describe("voice-command photo (requestPhoto ladder)", () => {
   });
 });
 
+describe("camera button → requestPhoto (photo_taken broadcast is dead on this firmware)", () => {
+  test("short press captures via requestPhoto; long press ignored; double-click debounced", async () => {
+    const { core, session } = rig();
+    let calls = 0;
+    session.requestPhotoImpl = async () => { calls += 1; return { buffer: Buffer.from("btn-jpeg"), mimeType: "image/jpeg", size: 8 }; };
+    await core.onButtonPress(session, "camera", "long");
+    expect(calls).toBe(0);
+    await core.onButtonPress(session, "camera", "short");
+    await core.onButtonPress(session, "camera", "short"); // second click within 3s
+    expect(calls).toBe(1);
+    expect(core.job.photo!.data.toString()).toBe("btn-jpeg");
+  });
+});
+
+describe("fillers", () => {
+  test("backchannel is neither a note nor a brain question", async () => {
+    const brain = new FakeBrain();
+    const { core, session } = rig({ brain });
+    expect(await core.onUtterance(session, "Mm-hm.")).toBe("filler");
+    expect(await core.onUtterance(session, "Okay, sounds good.")).toBe("note"); // has content → stays
+    expect(core.job.transcript).toEqual(["Okay, sounds good."]);
+    expect(brain.asked).toEqual(["Okay, sounds good."]);
+  });
+});
+
 describe("photo-mode brain", () => {
   test("photo is pushed as the brain's frame; questions are answered aloud", async () => {
     const brain = new FakeBrain();

@@ -47,6 +47,10 @@ class ForemanGlassBridge extends AppServer {
   ): Promise<void> {
     console.log(`[session] connected: ${sessionId} user=${userId} job=${this.core.job.jobId}`);
 
+    session.events.onButtonPress((btn) => {
+      void this.core.onButtonPress(session, String(btn.buttonId), String(btn.pressType));
+    });
+
     session.events.onPhotoTaken((p) => {
       const data = (p as unknown as { photoData?: ArrayBuffer }).photoData;
       const mime = (p as { mimeType?: string }).mimeType ?? "image/jpeg";

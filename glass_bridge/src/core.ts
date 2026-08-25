@@ -2,6 +2,7 @@
  *  event → job → submit → speak wiring is unit-testable with a fake session.
  *  index.ts only maps SDK events onto these methods. */
 import { EchoGuard } from "./echo-guard.js";
+import { isBackchannel } from "./is-backchannel.js";
 import { matchCommand } from "./commands.js";
 import { photoSizeLadder, type PhotoSize } from "./photo-size.js";
 import {
@@ -57,12 +58,28 @@ export class GlassIntakeCore {
     this.shareFrameWithBrain();
   }
 
+  /** Camera button. Live 25.08.2026: the system photo's `photo_taken`
+   *  broadcast does NOT reach the app on this firmware (matches the old
+   *  project's BACKLOG N12b), so the button must drive requestPhoto itself.
+   *  The system camera still fires — two shutters — but that is the
+   *  platform's Cloud SDK limitation, not a choice. */
+  async onButtonPress(session: GlassSession, buttonId: string, pressType: string): Promise<void> {
+    this.log(`[button] ${buttonId} ${pressType}`);
+    if (pressType !== "short") return; // long = system (video / power)
+    if (Date.now() - this.lastPhotoAt <= 3_000) return; // debounce double-clicks
+    await this.capturePhoto(session);
+  }
+
   /** Final transcript. Returns what it did (for tests/logs). */
-  async onUtterance(session: GlassSession, text: string): Promise<"echo" | "photo" | "submit" | "reset" | "note"> {
+  async onUtterance(session: GlassSession, text: string): Promise<"echo" | "photo" | "submit" | "reset" | "note" | "filler"> {
     const t = text.trim();
     if (!t) return "echo";
     if (this.echoGuard.isEcho(t)) return "echo";
     this.log(`[voice] ${t}`);
+    // "Mm-hm" / "okay" are not questions: keep them out of the notes and
+    // never wake the brain on them (live 25.08: every filler got a reply,
+    // and TTS is serial → answers queued up as "it lags / doesn't answer").
+    if (isBackchannel(t)) return "filler";
     const cmd = matchCommand(t);
     if (cmd === "photo") { await this.capturePhoto(session); return "photo"; }
     if (cmd === "submit") { await this.submit(session); return "submit"; }
@@ -135,13 +152,21 @@ export class GlassIntakeCore {
       .catch((err) => this.log(`[live-brain] frame push failed: ${String(err)}`));
   }
 
+  private brainBusy = false;
+
   private async forwardToBrain(session: GlassSession, text: string): Promise<void> {
     if (!this.o.brain) return;
+    // One question in flight at a time: a reply that arrives while the tech
+    // is already saying the next thing would just queue behind it in TTS.
+    if (this.brainBusy) { this.log("[live-brain] busy, dropping: " + text.slice(0, 40)); return; }
+    this.brainBusy = true;
     try {
       const reply = await this.o.brain.ask(text);
       if (reply) await this.speak(session, reply);
     } catch (err) {
       this.log(`[live-brain] forward failed: ${String(err)}`);
+    } finally {
+      this.brainBusy = false;
     }
   }
 
