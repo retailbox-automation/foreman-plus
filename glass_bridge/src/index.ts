@@ -55,6 +55,7 @@ class ForemanGlassBridge extends AppServer {
     brain: LIVE_BRAIN_URL ? new LiveBrainClient(LIVE_BRAIN_URL) : null,
     photoSize: parsePhotoSize(process.env.PHOTO_SIZE),
     trace: pushTrace,
+    getSession: () => this.currentSession,
   });
   private currentSession: AppSession | null = null;
   private glassesState: Record<string, unknown> | null = null;

@@ -42,6 +42,9 @@ export interface CoreOptions {
   reassureAfterMs?: number[];
   /** Auto-sleep after this much silence while awake (default 3 min). */
   awakeIdleMs?: number;
+  /** Latest live session (the MentraOS WS flaps and reconnects; a capture
+   *  retry must land on the CURRENT session, not the one that just died). */
+  getSession?: () => GlassSession | null;
   log?: (msg: string) => void;
   /** Structured event trace (rule: an agent whose steps can't be reconstructed
    *  after the fact is a bug). Every decision goes through here. */
@@ -183,6 +186,13 @@ export class GlassIntakeCore {
     const attempts = photoSizeLadder(remembered ?? this.o.photoSize);
     for (let i = 0; i < attempts.length; i++) {
       const want = attempts[i];
+      if (i > 0) {
+        // An idle MentraOS WS dies silently; the first request exposes the
+        // corpse and the app reconnects within ~5s (live 25.08, twice) —
+        // give it that window and aim the retry at the CURRENT session.
+        await new Promise((r) => setTimeout(r, 6_000));
+        session = this.o.getSession?.() ?? session;
+      }
       try {
         // compress:'medium' (SDK option, found in 2.1.29 d.ts) shrinks the
         // transfer — live 25.08 the UNcompressed default timed out over BT
