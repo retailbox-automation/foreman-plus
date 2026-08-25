@@ -3,7 +3,7 @@
 export type Command = "photo" | "submit" | "reset" | "stream_on" | "stream_off" | null;
 
 const PHOTO_RE =
-  /(сфоткай|сфотографируй|сделай фото|take a photo|take photo|snap a photo|capture (it|this|that))/i;
+  /(сфоткай|сфотографируй|сделай (ещё )?фото|ещё фото|(take|make|snap|shoot|grab) (a |another |a new |one more )?(photo|picture|pic|shot)|another (photo|picture|shot)|new (photo|picture)|capture (it|this|that))/i;
 const SUBMIT_RE =
   /(отправляй|отправить заявку|заявку в работу|send it( in| off)?|submit( the)?( job| request)?|file it)/i;
 const RESET_RE =

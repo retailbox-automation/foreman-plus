@@ -112,6 +112,23 @@ describe("guards", () => {
   });
 });
 
+describe("adaptive photo size (repeated default timeouts = extra audible shutters)", () => {
+  test("after a downgrade, the next capture starts at the size that worked", async () => {
+    const { core, session } = rig();
+    const sizes: (string | undefined)[] = [];
+    let failDefault = true;
+    session.camera.requestPhoto = async (opts?: { size?: string }) => {
+      sizes.push(opts?.size);
+      if (failDefault && opts?.size === undefined) throw new Error("Photo request timed out");
+      return { buffer: Buffer.from("jpeg"), mimeType: "image/jpeg", size: 4 };
+    };
+    await core.onUtterance(session, "take a photo");     // default fails → small ok
+    expect(sizes).toEqual([undefined, "small"]);
+    await core.onUtterance(session, "take another photo"); // starts at small: ONE shutter
+    expect(sizes).toEqual([undefined, "small", "small"]);
+  });
+});
+
 describe("voice-command photo (requestPhoto ladder)", () => {
   test("falls down the size ladder, then gives up with a spoken hint", async () => {
     const { core, session } = rig();

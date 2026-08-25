@@ -63,6 +63,11 @@ describe("commands", () => {
     expect(matchCommand("сфоткай это")).toBe("photo");
     expect(matchCommand("take a photo of the plate")).toBe("photo");
     expect(matchCommand("capture this")).toBe("photo");
+    // live 25.08: Mikhail's actual phrasing was missed and the brain lied
+    expect(matchCommand("Make another photo.")).toBe("photo");
+    expect(matchCommand("take one more picture")).toBe("photo");
+    expect(matchCommand("сделай ещё фото")).toBe("photo");
+    expect(matchCommand("grab a shot of this")).toBe("photo");
   });
   test("reset and no-command", () => {
     expect(matchCommand("start over please")).toBe("reset");

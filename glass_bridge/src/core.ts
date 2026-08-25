@@ -139,6 +139,14 @@ export class GlassIntakeCore {
   }
 
   private photoInFlight: Promise<boolean> | null = null;
+  /** Adaptive size: the room's link decides. When the default (1280x960) keeps
+   *  hitting the 30s transfer timeout (live 25.08: 3 of 4 button presses),
+   *  every retry ladder means EXTRA shutter clicks the tech can hear — so we
+   *  start at the last size that actually made it, and retry the full size
+   *  once the memory expires. */
+  private lastGoodSize: PhotoSize | undefined;
+  private lastGoodSizeAt = 0;
+  private static readonly SIZE_MEMORY_MS = 10 * 60_000;
 
   /** Explicit voice-command photo — requestPhoto with the size ladder. */
   async capturePhoto(session: GlassSession): Promise<boolean> {
@@ -152,7 +160,9 @@ export class GlassIntakeCore {
   }
 
   private async capturePhotoInner(session: GlassSession): Promise<boolean> {
-    const attempts = photoSizeLadder(this.o.photoSize);
+    const remembered = Date.now() - this.lastGoodSizeAt < GlassIntakeCore.SIZE_MEMORY_MS
+      ? this.lastGoodSize : undefined;
+    const attempts = photoSizeLadder(remembered ?? this.o.photoSize);
     for (let i = 0; i < attempts.length; i++) {
       const want = attempts[i];
       try {
@@ -164,6 +174,9 @@ export class GlassIntakeCore {
         setPhoto(this.job, photo.buffer, photo.mimeType);
         this.lastPhoto = { data: photo.buffer, mimeType: photo.mimeType, at: Date.now() };
         this.lastPhotoAt = Date.now();
+        // Remember only DOWNGRADED sizes (a working default needs no memory).
+        this.lastGoodSize = i > 0 ? want : undefined;
+        this.lastGoodSizeAt = Date.now();
         this.log(`[photo] requestPhoto ok (${photo.size} bytes, size=${want ?? "default"})`);
         await this.speak(session, "Photo captured.");
         this.shareFrameWithBrain();
