@@ -2,10 +2,12 @@
  * foreman-glass-bridge — Mentra Live glasses → Foreman+ intake (Cloud Run).
  *
  * Hands-free field capture: the technician looks at the unit, presses the
- * camera button ONCE (the system photo reaches us via the photo_taken
- * broadcast — we never call requestPhoto on the button, that's the
- * double-shutter), talks, then says "send it" → photo + voice notes go to the
- * ADK fleet's POST /run and the scope summary is spoken back into the ear.
+ * camera button (the button handler drives requestPhoto itself — live
+ * 25.08.2026 the system photo's photo_taken broadcast turned out dead on
+ * current firmware, so the second shutter click is an SDK limitation; the
+ * broadcast listener remains, deduped, in case a firmware update revives it),
+ * talks, then says "send it" → photo + voice notes go to the ADK fleet's
+ * POST /run and the scope summary is spoken back into the ear.
  *
  * Stateless infra: everything in memory, no disk — runs on Cloud Run
  * (min-instances=1; MentraOS holds a long-lived session WebSocket).
