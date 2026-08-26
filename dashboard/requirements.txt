@@ -2,3 +2,4 @@ fastapi
 uvicorn[standard]
 asyncpg
 google-cloud-firestore
+httpx
