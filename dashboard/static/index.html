@@ -30,7 +30,7 @@ finish review, the verdict, and DESIGN.md.
 :root{
   --paper:#F7F6F2; --panel:#FFFFFF; --well:#EFEDE7;
   --ink:#1B1C1E; --ink-2:#55575C; --ink-3:#6B6E72; --line:#E2E0D9; --line-2:#D2D0C8;
-  --green:#15803D; --green-bg:#E9F5EE; --green-line:#BFE3CD;
+  --green:#136F36; --green-bg:#E9F5EE; --green-line:#BFE3CD;
   --red:#C22A1E; --red-bg:#FBEDEA; --red-line:#EFC7C1;
   --orange:#E8590C; --orange-deep:#C94A08;
   --sans:"Archivo",system-ui,sans-serif;
@@ -67,7 +67,7 @@ button{font:inherit;cursor:pointer}
 .lede{max-width:720px;margin-bottom:28px}
 .lede h1{font-size:34px;line-height:1.12;font-weight:800;font-stretch:105%;
   letter-spacing:-.015em;text-wrap:balance}
-.lede p{margin-top:10px;color:var(--ink-2)}
+.lede p{margin-top:10px;color:var(--ink-2);max-width:62ch}
 .grid{display:grid;grid-template-columns:minmax(320px,5fr) minmax(0,7fr);gap:28px;align-items:start}
 
 /* ---------- demo panel ---------- */
@@ -109,6 +109,7 @@ button{font:inherit;cursor:pointer}
 /* ---------- ledger ---------- */
 .ledger-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
 .ledger-h .live{color:var(--green)}
+.ledger-h .live::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);margin-right:6px}
 .ledger{background:var(--panel);border:1px solid var(--line);border-radius:10px;
   max-height:560px;overflow-y:auto;scrollbar-width:thin}
 .row{display:flex;gap:12px;padding:11px 16px;border-bottom:1px solid var(--line);
@@ -178,6 +179,7 @@ footer a{text-decoration:none;border-bottom:1px solid var(--line-2)}
     <div class="tally"><span class="ok">approved <b id="t-ok">–</b></span>
       <span class="no">rejected <b id="t-no">–</b></span></div>
     <nav class="top-links">
+      <a href="/">The story</a>
       <a href="/doc/J-VRTX1">Sample document</a>
       <a href="https://foreman-closer-112293816563.us-central1.run.app/.well-known/agent-card.json">Agent card</a>
       <a href="https://github.com/retailbox-automation/foreman-plus">GitHub</a>
@@ -225,7 +227,7 @@ footer a{text-decoration:none;border-bottom:1px solid var(--line-2)}
 
     <section aria-label="Write-gate ledger">
       <div class="ledger-h"><span>Write gate · decision ledger</span>
-        <span class="live" id="livemark">● live</span></div>
+        <span class="live" id="livemark">live</span></div>
       <div class="ledger" id="ledger"><div class="empty">Connecting to the fleet…</div></div>
     </section>
   </div>

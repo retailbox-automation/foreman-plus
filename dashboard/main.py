@@ -296,4 +296,11 @@ async def healthz():
 
 @app.get("/")
 async def index():
+    """The judge's landing: the scroll story, ending in the live demo."""
+    return FileResponse(STATIC / "story" / "index.html")
+
+
+@app.get("/ops")
+async def ops():
+    """The fleet workbench (ledger, job board, demo trigger)."""
     return FileResponse(STATIC / "index.html")
