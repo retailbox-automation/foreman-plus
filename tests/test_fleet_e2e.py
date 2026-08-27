@@ -19,7 +19,8 @@ if os.environ.get("GOOGLE_GENAI_USE_VERTEXAI", "").lower() not in ("1", "true", 
     # legacy key path (prepay-billed); Vertex mode uses ADC from .env instead
     os.environ["GOOGLE_API_KEY"] = os.environ["GEMINI_API_KEY"]
     os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "FALSE"
-os.environ["FOREMAN_DB_URL"] = "postgresql://oskolamicheal@localhost:5432/foreman_core_test"
+os.environ.setdefault("FOREMAN_DB_URL",
+                       "postgresql://oskolamicheal@localhost:5432/foreman_core_test")
 
 from google.adk.runners import Runner  # noqa: E402
 from google.adk.sessions import InMemorySessionService  # noqa: E402
@@ -62,3 +63,29 @@ async def test_fleet_records_reported_facts_via_gate(clean_db):
     predicates = {f["predicate"] for f in facts}
     assert "equipment_model" in predicates
     assert final, "no final response"
+
+
+@pytest.mark.asyncio
+async def test_intake_records_property_technician_and_sources(clean_db):
+    store = clean_db
+    svc = InMemorySessionService()
+    await svc.create_session(app_name="t", user_id="u", session_id="s2")
+    runner = Runner(agent=root_agent, app_name="t", session_service=svc)
+
+    text = ("Field intake for job J-PROP1 at 214 Maple Ct, Orlando FL 32806. "
+            "Technician: Alicia Reyes. Client: Ray Okafor. "
+            "Technician's spoken notes:\n- electric water heater in the garage, no hot water since yesterday\n"
+            "- the nameplate serial is scratched off, cannot read it\n"
+            "Record the property, technician and client as facts, record every nameplate "
+            "and reported attribute with its source, then hand off to the estimator.")
+    msg = types.Content(role="user", parts=[types.Part(text=text)])
+    async for event in runner.run_async(user_id="u", session_id="s2", new_message=msg):
+        pass  # drain to completion; assertions read shared memory directly
+
+    facts = {f["predicate"]: f["object"] for f in await store.current_facts("job:J-PROP1")}
+    assert facts["property"]["value"] == "214 Maple Ct, Orlando FL 32806"
+    assert facts["technician"]["value"] == "Alicia Reyes"
+    assert facts["client"]["value"] == "Ray Okafor"
+    assert facts["issue"].get("source") == "technician voice"
+    assert facts["serial_number"]["value"] == "UNKNOWN"
+    assert facts["serial_number"].get("source") == "plate unreadable"

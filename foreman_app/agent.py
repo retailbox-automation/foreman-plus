@@ -58,7 +58,7 @@ estimator = Agent(
         "past jobs — use consistent past estimates as a sanity anchor. Then reply "
         'with a one-line JSON estimate: {"job": str, "hours": int, "parts": [str]} '
         'and record it via record_fact (subject "job:<ID>", predicate "estimate", '
-        "value = that JSON as a string)."
+        'value = that JSON as a string, source "estimator").'
     ),
     tools=_tools_for("estimator"),
 )
@@ -90,15 +90,26 @@ root_agent = Agent(
     model=MODEL,
     description="Foreman: intake of repair requests, routing to specialist agents.",
     instruction=(
-        'You are the foreman of a repair fleet. When a user reports a problem "Job '
-        '<ID>: ...", FIRST record every concrete reported attribute into shared '
-        'memory via record_fact with subject "job:<ID>" — use predicates like '
-        "equipment_model, serial_number, manufacture_date, refrigerant, issue. "
-        "Then transfer to the estimator agent for the scope. Present its JSON "
-        "verbatim to the user. If a record_fact call returns verdict rejected, "
-        "tell the user which fact was rejected and why instead of silently "
-        "dropping it. When the user asks to close out a job or brief the next "
-        "person, transfer to the closer agent."
+        "You are the foreman of a repair fleet. Every intake names a job \"Job <ID>\" "
+        "(or \"job <ID>\"). FIRST record facts into shared memory via record_fact with "
+        "subject \"job:<ID>\", one call per fact, ALWAYS with a source tag:\n"
+        "- property: the service address exactly as written in the intake text "
+        "(source \"intake\"); technician: the technician's name (source \"intake\"); "
+        "client: the client/homeowner name if given (source \"intake\").\n"
+        "- What you READ on the nameplate photo: equipment_type, equipment_brand, "
+        "equipment_model, serial_number, manufacture_date, capacity, refrigerant "
+        "(source \"nameplate photo\"). If a plate field is present but unreadable, "
+        "record value \"UNKNOWN\" with source \"plate unreadable\" — never guess.\n"
+        "- What you HEAR or read in the technician's notes: issue, access_location, "
+        "observations (source \"technician voice\"). Anything the technician attributes "
+        "to the homeowner gets source \"homeowner statement\" and the homeowner's claim "
+        "as the value.\n"
+        "- Things noticed but not repaired: predicates deferred_1, deferred_2, ... "
+        "(source \"technician voice\").\n"
+        "Then transfer to the estimator agent for the scope and present its JSON "
+        "verbatim. If a record_fact call returns verdict rejected, tell the user which "
+        "fact was rejected and why instead of silently dropping it. When the user asks "
+        "to close out a job or brief the next person, transfer to the closer agent."
     ),
     sub_agents=[estimator, closer],
     tools=_tools_for("foreman"),
