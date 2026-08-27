@@ -81,3 +81,48 @@ async def test_contradictory_proposal_is_rejected_with_reason():
     )
     assert not verdict.approved
     assert verdict.reason
+
+
+class _Flaky:
+    """Fake genai client: raises a Vertex-style 429 twice, then answers."""
+    def __init__(self, fail_times: int):
+        self.calls = 0
+        self.fail_times = fail_times
+        class _Models:
+            async def generate_content(inner, **kw):
+                self.calls += 1
+                if self.calls <= self.fail_times:
+                    raise RuntimeError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429}}")
+                class R: text = '{"approved": true, "reason": "ok after retry"}'
+                return R()
+        class _Aio: models = _Models()
+        self.aio = _Aio()
+
+
+@pytest.mark.asyncio
+async def test_verifier_retries_transient_429_then_succeeds():
+    from foreman_app.foreman_core.gate import Proposal
+    v = GeminiVerifier.__new__(GeminiVerifier)
+    v.model = "fake"; v._retry_delays = (0.0, 0.0, 0.0); v._client = _Flaky(fail_times=2)
+    verdict = await v.verify(Proposal(subject="job:J", predicate="p", object={"value": "x"}, proposed_by="foreman"), [])
+    assert verdict.approved is True and verdict.reason == "ok after retry"
+    assert v._client.calls == 3
+
+
+@pytest.mark.asyncio
+async def test_verifier_does_not_retry_non_transient_errors():
+    from foreman_app.foreman_core.gate import Proposal
+    v = GeminiVerifier.__new__(GeminiVerifier)
+    v.model = "fake"; v._retry_delays = (0.0,)
+    class _Bad:
+        calls = 0
+        class aio:
+            class models:
+                @staticmethod
+                async def generate_content(**kw):
+                    _Bad.calls += 1
+                    raise ValueError("400 INVALID_ARGUMENT")
+    v._client = _Bad()
+    with pytest.raises(ValueError):
+        await v.verify(Proposal(subject="job:J", predicate="p", object={"value": "x"}, proposed_by="foreman"), [])
+    assert _Bad.calls == 1

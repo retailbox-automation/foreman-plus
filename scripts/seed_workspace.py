@@ -41,7 +41,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parent.parent
 
 FLEET_URL_DEFAULT = "https://foreman-hello-112293816563.us-central1.run.app"
-RUN_TIMEOUT_S = 180
+RUN_TIMEOUT_S = 600   # one visit can take minutes when Vertex throttles the verifier
 SLEEP_BETWEEN_VISITS_S = 5
 
 # (a) 1187 Lakeshore Dr — two visits, two technicians, one deferred finding
@@ -220,7 +220,7 @@ async def _run_visit(client: Any, pool: Any, fleet_url: str, headers: dict[str, 
     return has_property
 
 
-async def _run_plan(plan: list[dict[str, Any]], fleet_url: str, db_url: str) -> int:
+async def _run_plan(plan: list[dict[str, Any]], fleet_url: str, db_url: str, force: bool = False) -> int:
     from foreman_app.foreman_core.db import create_pool
     import httpx
 
@@ -235,7 +235,7 @@ async def _run_plan(plan: list[dict[str, Any]], fleet_url: str, db_url: str) -> 
         for i, visit in enumerate(plan):
             job_id = visit["job_id"]
             print(f"\n=== {job_id} — {visit['property']} ({visit['technician']}) ===")
-            if await _has_property_fact(pool, job_id):
+            if not force and await _has_property_fact(pool, job_id):
                 print(f"  skip: job:{job_id} already has a property fact (idempotent)")
                 continue
 
@@ -251,7 +251,7 @@ async def _run_plan(plan: list[dict[str, Any]], fleet_url: str, db_url: str) -> 
                 async with httpx.AsyncClient(timeout=RUN_TIMEOUT_S) as client:
                     ok = await _run_visit(client, pool, fleet_url, headers, visit)
             except Exception as e:
-                print(f"  ERROR: {e}", file=sys.stderr)
+                print(f"  ERROR: {type(e).__name__}: {e}", file=sys.stderr)
                 ok = False
             if not ok:
                 failures.append(job_id)
@@ -276,6 +276,8 @@ def main(argv: list[str] | None = None) -> int:
                          help="print the visit plan and exit; no network/DB calls")
     parser.add_argument("--run", action="store_true",
                          help="execute the plan against the live fleet (Vertex-billed)")
+    parser.add_argument("--force", action="store_true",
+                        help="re-run a visit even if the job already has a property fact")
     parser.add_argument("--only", metavar="JOB_ID",
                          help="run a single visit by job_id instead of the whole plan")
     parser.add_argument("--fleet-url", default=FLEET_URL_DEFAULT,
@@ -310,7 +312,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  - {m}", file=sys.stderr)
         return 2
 
-    return asyncio.run(_run_plan(plan, args.fleet_url, args.db_url))
+    return asyncio.run(_run_plan(plan, args.fleet_url, args.db_url, force=args.force))
 
 
 if __name__ == "__main__":
