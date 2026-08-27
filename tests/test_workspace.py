@@ -119,3 +119,16 @@ def test_brand_is_prefixed_when_model_lacks_it():
     # brand already inside the model string is not duplicated
     d2 = property_detail("214-maple-ct-orlando-fl-32806", FACTS + [fact(10, "J1", "equipment_brand", "Rheem")], JOURNAL)
     assert d2["equipment"][0]["model"] == "Rheem 82V40-2"
+
+
+def test_same_unit_written_two_ways_is_one_equipment_card():
+    facts = FACTS + [
+        fact(20, "J2", "property", "214 Maple Ct, Orlando FL 32806", "intake"),
+        fact(21, "J2", "equipment_model", "Rheem 82V40-2", "nameplate photo"),
+        fact(22, "J2", "manufacture_date", "2004", "nameplate photo"),
+        fact(23, "J1", "equipment_brand", "Rheem", "nameplate photo"),
+    ]
+    facts = [{**f, "object": {"value": "82V40-2", "source": "nameplate photo"}}
+             if f["subject"] == "job:J1" and f["predicate"] == "equipment_model" else f for f in facts]
+    d = property_detail("214-maple-ct-orlando-fl-32806", facts, JOURNAL)
+    assert [e["model"] for e in d["equipment"]] == ["Rheem 82V40-2"]

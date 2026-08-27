@@ -242,8 +242,9 @@ def _equipment(jobs: list[tuple[str, list[dict]]]) -> list[dict]:
         model = _latest(fs, "equipment_model")
         if not model:
             continue
-        key = re.sub(r"\s+", " ", str(_val(model["object"])).strip().lower())
-        card = cards.setdefault(key, {"model": _display_model(fs) or str(_val(model["object"])), "type": "Equipment", "fields": {}})
+        shown = _display_model(fs) or str(_val(model["object"]))
+        key = re.sub(r"[^a-z0-9]+", "", shown.lower())      # "Rheem 82V40-2" == "82V40-2"+brand Rheem
+        card = cards.setdefault(key, {"model": shown, "type": "Equipment", "fields": {}})
         etype = _latest(fs, "equipment_type")
         if etype and _val(etype["object"]) != UNKNOWN and card["type"] == "Equipment":
             card["type"] = str(_val(etype["object"]))
