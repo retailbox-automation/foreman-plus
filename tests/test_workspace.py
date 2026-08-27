@@ -132,3 +132,9 @@ def test_same_unit_written_two_ways_is_one_equipment_card():
              if f["subject"] == "job:J1" and f["predicate"] == "equipment_model" else f for f in facts]
     d = property_detail("214-maple-ct-orlando-fl-32806", facts, JOURNAL)
     assert [e["model"] for e in d["equipment"]] == ["Rheem 82V40-2"]
+
+
+def test_briefing_lines_start_with_a_capital_letter():
+    facts = FACTS + [fact(30, "J1", "equipment_type", "electric water heater", "nameplate photo")]
+    d = property_detail("214-maple-ct-orlando-fl-32806", facts, JOURNAL)
+    assert d["briefing"][0]["text"].startswith("Electric water heater")

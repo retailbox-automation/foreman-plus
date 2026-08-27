@@ -173,6 +173,7 @@ def _briefing(job: str, fs: list[dict], journal: list[dict]) -> list[dict]:
     date = _visit_date(fs)
 
     def line(text: str, f: dict, predicate: str | None = None):
+        text = text[:1].upper() + text[1:]          # equipment_type often arrives lowercase
         lines.append({"text": text, "source": _src(f["object"]) or "unknown source",
                       "agent": f["source_agent"], "ts": _iso(f["valid_from"]),
                       "gate_entry_id": f.get("gate_entry_id"), "job_id": job,
