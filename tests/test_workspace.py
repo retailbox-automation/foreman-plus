@@ -106,3 +106,16 @@ def test_job_detail_groups_facts_and_journal():
     assert j["facts"]["money"][0]["label"] == "Estimate"
     assert [e["id"] for e in j["journal"]][:2] == [109, 108]      # newest first, 403 row excluded
     assert j["journal"][1]["reason"].startswith("The proposed manufacture date")
+
+
+def test_brand_is_prefixed_when_model_lacks_it():
+    facts = FACTS + [fact(10, "J1", "equipment_brand", "Rheem", "nameplate photo")]
+    facts = [f if not (f["predicate"] == "equipment_model" and f["subject"] == "job:J1") else
+             {**f, "object": {"value": "82V40-2", "source": "nameplate photo"}} for f in facts]
+    props = group_properties(facts, JOURNAL)
+    assert props[0]["equipment_summary"].startswith("Rheem 82V40-2")
+    d = property_detail("214-maple-ct-orlando-fl-32806", facts, JOURNAL)
+    assert d["equipment"][0]["model"] == "Rheem 82V40-2"
+    # brand already inside the model string is not duplicated
+    d2 = property_detail("214-maple-ct-orlando-fl-32806", FACTS + [fact(10, "J1", "equipment_brand", "Rheem")], JOURNAL)
+    assert d2["equipment"][0]["model"] == "Rheem 82V40-2"

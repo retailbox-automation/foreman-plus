@@ -87,6 +87,21 @@ def _visit_date(fs: list[dict]) -> str:
     return min(f["valid_from"] for f in fs).date().isoformat()
 
 
+def _display_model(fs: list[dict]) -> str | None:
+    """'Rheem 82V40-2' from brand + model facts; the brand is prefixed only when
+    the model string does not already carry it."""
+    model = _latest(fs, "equipment_model")
+    if not model or _val(model["object"]) == UNKNOWN:
+        return None
+    m = str(_val(model["object"])).strip()
+    brand = _latest(fs, "equipment_brand")
+    if brand and _val(brand["object"]) != UNKNOWN:
+        b = str(_val(brand["object"])).strip()
+        if b and b.lower() not in m.lower():
+            return f"{b} {m}"
+    return m
+
+
 def _estimate_text(raw: Any) -> str:
     try:
         e = json.loads(raw) if isinstance(raw, str) else raw
@@ -132,8 +147,8 @@ def _summary(props: dict[str, dict], slug: str, journal: list[dict]) -> dict:
     rejected = [r for job, _ in jobs for r in _job_rows(journal, job) if r["verdict"] == "rejected"]
     unknowns = [f for _, fs in jobs for f in fs if _val(f["object"]) == UNKNOWN]
     state = "needs_confirmation" if rejected else ("unknowns" if unknowns else "calm")
-    model = _latest(newest, "equipment_model")
-    bits = [str(_val(model["object"]))] if model else []
+    dm = _display_model(newest)
+    bits = [dm] if dm else []
     for pred in ("manufacture_date", "capacity"):
         f = _latest(newest, pred)
         if f and _val(f["object"]) != UNKNOWN:
@@ -228,7 +243,7 @@ def _equipment(jobs: list[tuple[str, list[dict]]]) -> list[dict]:
         if not model:
             continue
         key = re.sub(r"\s+", " ", str(_val(model["object"])).strip().lower())
-        card = cards.setdefault(key, {"model": str(_val(model["object"])), "type": "Equipment", "fields": {}})
+        card = cards.setdefault(key, {"model": _display_model(fs) or str(_val(model["object"])), "type": "Equipment", "fields": {}})
         etype = _latest(fs, "equipment_type")
         if etype and _val(etype["object"]) != UNKNOWN and card["type"] == "Equipment":
             card["type"] = str(_val(etype["object"]))

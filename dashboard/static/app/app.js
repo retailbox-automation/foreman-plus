@@ -10,6 +10,7 @@
  */
 'use strict';
 
+const PLATE_FIELDS = new Set(['equipment_model', 'equipment_brand', 'equipment_type', 'serial_number', 'manufacture_date', 'capacity', 'refrigerant']);
 const MAPLE_ID = '214-maple-ct-orlando-fl-32806';   // the one property with a demo scenario
 const NAMEPLATE = '/static/demo/nameplate.jpg';
 
@@ -230,11 +231,12 @@ function openQuestion(q, address) {
           ${c.gate_entry_id ? ' · gate entry <span class="mono">#' + esc(c.gate_entry_id) + '</span>' : ''}
           ${q.verifier_model ? ' · verifier <span class="mono">' + esc(q.verifier_model) + '</span>' : ''}</div>
       </div>
-      <div class="oq-act">
+      ${PLATE_FIELDS.has(q.predicate) ? `<div class="oq-act">
         <a class="btn" href="/tech?property=${encodeURIComponent(address || '')}">Re-shoot the nameplate</a>
       </div>
       <p class="oq-note">The recorded value stands until a new reading clears the gate. Settling it by serial
-        at the supply house beats settling it from memory.</p>
+        at the supply house beats settling it from memory.</p>` : `<p class="oq-note">The recorded value stands. A conflicting claim was refused rather than
+        overwritten; correct it from the phone on the next visit if the record is wrong.</p>`}
     </div>`;
   }
   return `<div class="oq-item" data-oq="${esc(q.gate_entry_id)}">
