@@ -62,7 +62,7 @@ VISITS: list[dict[str, Any]] = [
      "followups": []},
     {"job_id": "J-DEMO-134922", "property": "214 Maple Ct, Orlando FL 32806", "technician": "Alicia Reyes",
      "client": "Ray Okafor", "photo": None,
-     "notes": ["Housekeeping: this job is at 214 Maple Ct, Orlando FL 32806, technician Alicia Reyes, client Ray Okafor. Record property, technician and client only; do not re-record equipment facts and do not hand off to the estimator."],
+     "notes": ["Job J-DEMO-134922: housekeeping — this job is at 214 Maple Ct, Orlando FL 32806, technician Alicia Reyes, client Ray Okafor. Record property, technician and client only; do not re-record equipment facts and do not hand off to the estimator."],
      "followups": []},
     {"job_id": "J-FERN-1", "property": "902 Ferncreek Ave, Orlando FL 32806", "technician": "Miguel Torres",
      "client": "Priya Raman", "photo": "scripts/seed_assets/ferncreek-lg-dryer-worn.jpg",
@@ -70,11 +70,11 @@ VISITS: list[dict[str, Any]] = [
                "The plate is worn — I can make out the model but not the serial number."],
      "followups": []},
     {"job_id": "J-970", "property": "1187 Lakeshore Dr, Orlando FL 32803", "technician": "Miguel Torres", "client": "Dana Whitfield", "photo": None,
-     "notes": ["Housekeeping: this job is at 1187 Lakeshore Dr, Orlando FL 32803, technician Miguel Torres, client Dana Whitfield. Record property, technician and client only; do not re-record equipment facts and do not hand off to the estimator."], "followups": []},
+     "notes": ["Job J-970: housekeeping — this job is at 1187 Lakeshore Dr, Orlando FL 32803, technician Miguel Torres, client Dana Whitfield. Record property, technician and client only; do not re-record equipment facts and do not hand off to the estimator."], "followups": []},
     {"job_id": "J-971", "property": "1187 Lakeshore Dr, Orlando FL 32803", "technician": "Alicia Reyes", "client": "Dana Whitfield", "photo": None,
-     "notes": ["Housekeeping: this job is at 1187 Lakeshore Dr, Orlando FL 32803, technician Alicia Reyes, client Dana Whitfield. Record property, technician and client only; do not re-record equipment facts and do not hand off to the estimator."], "followups": []},
+     "notes": ["Job J-971: housekeeping — this job is at 1187 Lakeshore Dr, Orlando FL 32803, technician Alicia Reyes, client Dana Whitfield. Record property, technician and client only; do not re-record equipment facts and do not hand off to the estimator."], "followups": []},
     {"job_id": "J-VRTX1", "property": "214 Maple Ct, Orlando FL 32806", "technician": "Miguel Torres", "client": "Ray Okafor", "photo": None,
-     "notes": ["Housekeeping: this job is at 214 Maple Ct, Orlando FL 32806, technician Miguel Torres, client Ray Okafor. Record property, technician and client only; do not re-record equipment facts and do not hand off to the estimator."], "followups": []},
+     "notes": ["Job J-VRTX1: housekeeping — this job is at 214 Maple Ct, Orlando FL 32806, technician Miguel Torres, client Ray Okafor. Record property, technician and client only; do not re-record equipment facts and do not hand off to the estimator."], "followups": []},
 ]
 
 

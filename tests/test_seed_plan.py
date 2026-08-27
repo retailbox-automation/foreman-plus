@@ -23,4 +23,4 @@ def test_run_payload_shape_with_and_without_photo():
     assert p["new_message"]["parts"][1]["inlineData"]["mimeType"] == "image/jpeg"
     hk = next(v for v in plan if v["photo"] is None)
     p2 = run_payload(hk, photo_bytes=None, mime=None)
-    assert len(p2["new_message"]["parts"]) == 1 and "Housekeeping" in p2["new_message"]["parts"][0]["text"]
+    assert len(p2["new_message"]["parts"]) == 1 and p2["new_message"]["parts"][0]["text"].startswith(f"Job {hk['job_id']}: housekeeping")
