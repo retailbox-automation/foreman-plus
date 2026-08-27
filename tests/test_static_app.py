@@ -1,0 +1,23 @@
+"""Smoke checks on the static office seat: the shell wires the right files,
+the router covers every route, and the LEDGER tokens are the ones shipped.
+
+These are cheap structural guards, not a substitute for the click-test: they
+catch a renamed asset or a dropped route in CI, where no browser runs.
+"""
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parents[1]
+
+
+def test_office_app_files_exist_and_reference_routes():
+    html = (REPO / "dashboard/static/app/index.html").read_text()
+    js = (REPO / "dashboard/static/app/app.js").read_text()
+    css = (REPO / "dashboard/static/app/app.css").read_text()
+    assert "/static/app/app.js" in html and "/static/app/app.css" in html
+    for route in ["#/intro", "#/properties", "#/property/", "#/job/", "#/jobs", "#/ledger"]:
+        assert route in js, route
+    for endpoint in ["/api/properties", "/api/property/", "/api/job/", "/api/state",
+                     "/api/demo/run", "/api/demo/status"]:
+        assert endpoint in js, endpoint
+    assert "#2C5CD8" in css and "Inter" in html and "IBM Plex Mono" in html
+    assert "digest" not in css.lower()
