@@ -32,6 +32,11 @@ except ImportError:  # local dev / tests: repo root on sys.path
     )
     from foreman_app.foreman_core.memory import MemoryStore
 
+try:
+    from workspace import group_properties, property_detail, job_detail   # container
+except ImportError:
+    from dashboard.workspace import group_properties, property_detail, job_detail
+
 STATIC = Path(__file__).parent / "static"
 
 state: dict = {"pool": None, "fs": None}
@@ -139,6 +144,72 @@ async def api_state():
     })
 
 
+async def _facts_and_journal():
+    async with state["pool"].acquire() as conn:
+        facts = [dict(r) for r in await conn.fetch(
+            """SELECT id, subject, predicate, object, source_agent, valid_from, valid_to, ingested_at
+               FROM memory_facts WHERE valid_to IS NULL ORDER BY id""")]
+        journal = [dict(r) for r in await conn.fetch(
+            """SELECT id, proposed_by, proposal, verdict, verifier_model, reason, decided_at, created_at
+               FROM gate_journal ORDER BY id""")]
+        counters = dict(await conn.fetchrow(
+            """SELECT count(*) FILTER (WHERE verdict='approved') AS approved,
+                      count(*) FILTER (WHERE verdict='rejected') AS rejected, count(*) AS total
+               FROM gate_journal WHERE reason IS NULL OR reason NOT LIKE 'verifier error:%'"""))
+    return facts, journal, {k: int(v) for k, v in counters.items()}
+
+
+@app.get("/api/properties")
+async def api_properties():
+    facts, journal, counters = await _facts_and_journal()
+    props = group_properties(facts, journal)
+    with_prop = {j for p in props for j in p["jobs"]}
+    all_jobs = {f["subject"].split(":", 1)[-1] for f in facts}
+    return JSONResponse({"properties": props, "counters": counters,
+                         "no_property_jobs": len(all_jobs - with_prop)})
+
+
+@app.get("/api/property/{prop_id}")
+async def api_property(prop_id: str):
+    facts, journal, _ = await _facts_and_journal()
+    d = property_detail(prop_id, facts, journal)
+    if d is None:
+        return JSONResponse({"error": "unknown property"}, status_code=404)
+    return JSONResponse(d)
+
+
+async def _similar(store: MemoryStore, job_id: str, facts: list[dict]) -> list[dict]:
+    issue = next((f["object"].get("value") for f in facts
+                  if f["subject"] == f"job:{job_id}" and f["predicate"] == "issue"), None)
+    if not issue:
+        return []
+    try:
+        try:
+            from foreman_core.embedder import GeminiEmbedder
+        except ImportError:
+            from foreman_app.foreman_core.embedder import GeminiEmbedder
+        qvec = await asyncio.wait_for(GeminiEmbedder().embed(str(issue), kind="query"), timeout=3.0)
+        hits = await asyncio.wait_for(store.recall(qvec, top_k=6), timeout=3.0)
+        return [{"job_id": h["subject"].split(":", 1)[-1], "predicate": h["predicate"],
+                 "value": h["object"].get("value"), "score": round(h["score"], 2)}
+                for h in hits if h["subject"] != f"job:{job_id}"][:3]
+    except Exception:
+        return []
+
+
+@app.get("/api/job/{job_id}")
+async def api_job(job_id: str):
+    facts, journal, _ = await _facts_and_journal()
+    store = MemoryStore(state["pool"])
+    try:
+        closeout = await build_closeout(store, job_id)
+    except Exception:
+        closeout = None
+    d = job_detail(job_id, facts, journal, closeout)
+    d["similar"] = await _similar(store, job_id, facts)
+    return JSONResponse(d)
+
+
 @app.get("/doc/{job_id}")
 async def job_document(job_id: str, mode: str = "homeowner"):
     """Client-facing closeout document, built strictly from gated memory."""
@@ -196,7 +267,14 @@ def _demo_photo_b64() -> str:
 
 
 async def _id_token(audience: str) -> str:
-    """Google ID token for the fleet's auth-only Cloud Run URL (ADC / metadata)."""
+    """Google ID token for the fleet's auth-only Cloud Run URL (ADC / metadata).
+
+    A `http://localhost` audience is a local stub fleet used for front-end
+    walkthroughs (no Cloud Run, no Google auth) — short-circuit to a fixed
+    dev token instead of hitting ADC/the metadata server.
+    """
+    if audience.startswith("http://localhost"):
+        return "dev"
     import google.auth.transport.requests
     import google.oauth2.id_token
     req = google.auth.transport.requests.Request()
@@ -211,11 +289,16 @@ async def _drive_fleet(job_id: str):
         headers = {"Authorization": f"Bearer {token}"}
         parts = [
             {"text":
-                f"Field intake for job {job_id}, submitted from the public demo. "
+                f"Field intake for job {job_id} at 214 Maple Ct, Orlando FL 32806. "
+                "Technician: Alicia Reyes. Client: Ray Okafor. Submitted from the "
+                "public demo. "
                 "The photo is what the technician is looking at. "
                 "Technician's spoken notes:\n"
                 + "\n".join(f"- {n}" for n in DEMO_NOTES)
-                + f"\nRecord the nameplate facts from the photo and the reported "
+                + "\nRecord the property, technician and client as facts; tag "
+                "every fact with its source (nameplate photo / technician voice "
+                "/ homeowner statement). "
+                + f"Record the nameplate facts from the photo and the reported "
                 f"issue in memory for job {job_id}, then hand off to the "
                 "estimator for a scope estimate. End with a ONE-SENTENCE "
                 "summary."},
@@ -289,6 +372,102 @@ async def demo_status():
             "reply": demo["reply"], "error": demo["error"], "elapsed": elapsed}
 
 
+# ------------------------------------------------------------ phone intake
+
+from fastapi import File, Form, UploadFile  # noqa: E402
+
+INTAKE_COOLDOWN_S = 30
+INTAKE_DAILY_CAP = 60
+INTAKE_MAX_BYTES = 12 * 1024 * 1024
+intake = {"last_start": 0.0, "day": "", "count": 0, "jobs": {}}
+
+
+def _intake_text(job_id: str, prop: str, tech: str, client: str, notes: str, has_audio: bool) -> str:
+    return (f"Field intake for job {job_id} at {prop}. Technician: {tech}. "
+            + (f"Client: {client}. " if client else "")
+            + "Submitted from the technician's phone. The photo is the equipment nameplate "
+            "or the equipment itself. "
+            + ("The audio is the technician's spoken notes — transcribe it and treat it as "
+               "the technician's voice. " if has_audio else "")
+            + (f"Typed notes: {notes} " if notes else "")
+            + "Record the property, technician and client as facts. Record every nameplate "
+            "field you can read with source \"nameplate photo\"; if a field is unreadable, "
+            "record it as UNKNOWN with source \"plate unreadable\". Record the reported issue "
+            "and observations with source \"technician voice\"; anything attributed to the "
+            "homeowner with source \"homeowner statement\". Then hand off to the estimator "
+            "for a scope estimate. End with a ONE-SENTENCE summary for the technician.")
+
+
+async def _drive_intake(job_id: str, parts: list[dict]):
+    import httpx
+    st = intake["jobs"][job_id]
+    try:
+        token = await _id_token(FLEET_URL)
+        headers = {"Authorization": f"Bearer {token}"}
+        async with httpx.AsyncClient(timeout=DEMO_TIMEOUT_S) as c:
+            r = await c.post(f"{FLEET_URL}/apps/{DEMO_APP}/users/tech/sessions/{job_id}",
+                             json={}, headers=headers)
+            if r.status_code not in (200, 400, 409):
+                r.raise_for_status()
+            r = await c.post(f"{FLEET_URL}/run", headers=headers, json={
+                "app_name": DEMO_APP, "user_id": "tech", "session_id": job_id,
+                "new_message": {"role": "user", "parts": parts}})
+            r.raise_for_status()
+            reply = ""
+            for ev in r.json() if isinstance(r.json(), list) else []:
+                for p in (ev.get("content") or {}).get("parts") or []:
+                    if isinstance(p.get("text"), str) and p["text"].strip():
+                        reply = p["text"].strip()
+        st.update(status="done", reply=reply[:600])
+    except Exception as e:
+        st.update(status="error", error=str(e)[:300])
+
+
+@app.post("/api/intake")
+async def intake_submit(property: str = Form(...), technician: str = Form(...),
+                        client: str = Form(""), notes: str = Form(""),
+                        photo: UploadFile = File(...), audio: UploadFile | None = File(None)):
+    now = time.time()
+    day = time.strftime("%Y-%m-%d", time.gmtime(now))
+    if intake["day"] != day:
+        intake.update(day=day, count=0)
+    if now - intake["last_start"] < INTAKE_COOLDOWN_S:
+        return JSONResponse({"ok": False, "why": f"cooldown — try again in {int(INTAKE_COOLDOWN_S - (now - intake['last_start']))}s"}, status_code=429)
+    if intake["count"] >= INTAKE_DAILY_CAP:
+        return JSONResponse({"ok": False, "why": "daily intake cap reached"}, status_code=429)
+    photo_bytes = await photo.read()
+    if not photo_bytes or len(photo_bytes) > INTAKE_MAX_BYTES:
+        return JSONResponse({"ok": False, "why": "photo missing or too large"}, status_code=422)
+    audio_bytes = await audio.read() if audio is not None else b""
+    if len(audio_bytes) > INTAKE_MAX_BYTES:
+        return JSONResponse({"ok": False, "why": "audio too large"}, status_code=422)
+    job_id = "J-T-" + time.strftime("%H%M%S", time.gmtime(now))
+    parts = [{"text": _intake_text(job_id, property.strip(), technician.strip(), client.strip(),
+                                    notes.strip(), bool(audio_bytes))},
+             {"inlineData": {"mimeType": photo.content_type or "image/jpeg",
+                             "data": base64.b64encode(photo_bytes).decode()}}]
+    if audio_bytes:
+        parts.append({"inlineData": {"mimeType": (audio.content_type or "audio/webm").split(";")[0],
+                                     "data": base64.b64encode(audio_bytes).decode()}})
+    intake.update(last_start=now, count=intake["count"] + 1)
+    intake["jobs"][job_id] = {"status": "running", "reply": "", "error": "", "started_at": now,
+                              "property": property.strip()}
+    asyncio.get_running_loop().create_task(_drive_intake(job_id, parts))
+    return {"ok": True, "job_id": job_id}
+
+
+@app.get("/api/intake/status")
+async def intake_status(job_id: str):
+    st = intake["jobs"].get(job_id)
+    if not st:
+        return JSONResponse({"error": "unknown job"}, status_code=404)
+    async with state["pool"].acquire() as conn:
+        n = await conn.fetchval("SELECT count(*) FROM memory_facts WHERE subject=$1 AND valid_to IS NULL",
+                                f"job:{job_id}")
+    return {"job_id": job_id, "status": st["status"], "elapsed": int(time.time() - st["started_at"]),
+            "reply": st["reply"], "error": st["error"], "facts": int(n), "property": st["property"]}
+
+
 @app.get("/healthz")
 async def healthz():
     return {"ok": True}
@@ -296,11 +475,17 @@ async def healthz():
 
 @app.get("/")
 async def index():
-    """The judge's landing: the scroll story, ending in the live demo."""
-    return FileResponse(STATIC / "story" / "index.html")
+    """Office seat: the contractor's workspace (properties → record → job → ledger)."""
+    return FileResponse(STATIC / "app" / "index.html")
+
+
+@app.get("/tech")
+async def tech():
+    """Technician seat: pre-visit briefing → photo + voice capture → result."""
+    return FileResponse(STATIC / "tech" / "index.html")
 
 
 @app.get("/ops")
 async def ops():
-    """The fleet workbench (ledger, job board, demo trigger)."""
-    return FileResponse(STATIC / "index.html")
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse("/#/ledger", status_code=302)
