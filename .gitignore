@@ -31,3 +31,9 @@ docs/VALUE-LEVERS-PANEL*
 .snap-tmp.txt
 .shot-*.png
 dashboard/static/story/frames/
+
+# internal design research (not for judges)
+docs/ux-research-*/
+docs/design-variants-*/
+docs/superpowers/
+.playwright-mcp/
