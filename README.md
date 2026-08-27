@@ -115,20 +115,41 @@ Three ADK agents share one gated Postgres memory store and are deployed as indep
 - The **write-gate** (above) sits between every agent and Postgres. Approved writes are also
   published, best-effort, to a Firestore `activity` collection that feeds the live dashboard —
   Postgres stays the single system of record regardless of whether that publish succeeds.
-- The **dashboard** is a fourth, separate Cloud Run service: a read-only FastAPI app with no LLM
-  calls and no write path, safe to expose publicly. It aggregates Postgres + Firestore into one
-  `/api/state` payload for the control-room UI, and serves the closeout document directly
-  (`/doc/{job_id}`, `/api/closeout/{job_id}`) by reading the same deterministic builder the closer
-  agent uses.
+- The **dashboard** is a fourth, separate Cloud Run service (`foreman-dash`): a FastAPI app with
+  no LLM calls of its own. It serves two seats. The **office seat** (`/`) is the contractor's
+  workspace — *properties → property record → visit → ledger*. A property is not a table: it is a
+  derived grouping over the gate-verified `property` fact (`dashboard/workspace.py`, pure functions
+  over `memory_facts` + `gate_journal`), so the briefing, the open questions (refused claims with
+  the verifier's verbatim reason, honest `UNKNOWN` fields), the equipment card with a provenance chip
+  on every value, and the visit timeline are all rebuilt from facts on every request. The
+  **technician seat** (`/tech`) is a phone page: pre-visit briefing → photo + voice capture →
+  result in ~15 s; `POST /api/intake` forwards the phone's photo and audio, unchanged, to the same
+  ADK `/run` the glasses use. The closeout document is served directly (`/doc/{job_id}`,
+  `/api/closeout/{job_id}`) from the same deterministic builder the closer agent uses.
 - The dashboard doesn't import the core package over the network — at deploy time
   `scripts/deploy_dashboard.sh` vendors `foreman_app/foreman_core/` into `dashboard/` (rsync, then
   `gcloud run deploy`), so the dashboard ships as its own self-contained build context.
 
 ## Live demo
 
-- **Dashboard (public, read-only):** https://foreman-dash-112293816563.us-central1.run.app
-  — fleet topology, the gate journal (every approve/reject with the verifier's reason), the job
-  board, and a live activity feed.
+- **Office seat (public):** https://foreman-dash-112293816563.us-central1.run.app — opens on a
+  sample workspace, *Ridgeline Mechanical*, seeded through the real fleet (every fact went through
+  the write-gate; nothing was inserted by SQL). Three sample properties: **1187 Lakeshore Dr** (two
+  visits by two technicians, a deferred finding), **214 Maple Ct** (a refused homeowner claim —
+  "the unit is from 2022" against a nameplate-read 05/2004 — parked as an open question with the
+  verifier's reason), **902 Ferncreek Ave** (a worn plate: model read, serial honestly `UNKNOWN`,
+  complaint filled by voice). Click any provenance chip to see where a value came from: the
+  nameplate crop or the voice line, the agent, the gate entry id, the timestamp.
+- **Run the demo** (button in the header, or *Run the demo here* on 214 Maple Ct) drives the real
+  fleet with a two-turn scenario: an intake off the nameplate photo, then a pushback that tries to
+  overwrite the manufacture date with words. The new visit lands in the record and the refusal lands
+  in *Open questions* — no scripted animation, the page just re-reads `/api/property/…`.
+  Guarded server-side: one run at a time, 90 s cooldown, 60/day, hardcoded input.
+- **Technician seat (open on a phone):** https://foreman-dash-112293816563.us-central1.run.app/tech
+  — pick a property, photograph a nameplate, hold to talk, send. The result screen lists the facts
+  with their sources, anything refused by the gate with the reason, and anything still unknown.
+- **APIs the seats read:** `/api/properties`, `/api/property/{id}`, `/api/job/{id}`, `/api/state`
+  (ledger + counters), `POST /api/intake` + `/api/intake/status`.
 - **Closeout document example:** https://foreman-dash-112293816563.us-central1.run.app/doc/J-VRTX1
   (add `?mode=decider` for the absent-decision-maker version of the same job).
 - **Closer agent card (A2A discovery):**
@@ -189,6 +210,21 @@ verified in this repo:
   an SDK limitation, not app behavior), with the broadcast listener kept and deduped in case a
   firmware update revives it. Separately, `compress: 'medium'` cut photo capture 34 s → 6.3 s —
   the uncompressed default was timing out over Bluetooth and silently degrading resolution.
+- **A property is a derived grouping, not a table.** The office seat's whole information
+  architecture — properties, briefings, open questions, equipment cards — is computed on every
+  request from `memory_facts` + `gate_journal` by pure functions (`dashboard/workspace.py`), keyed on
+  a gate-verified `property` fact. No schema migration, and the briefing can never drift from the
+  facts because it is rebuilt from them.
+- **Name the job in every prompt, or the model picks one for you.** A "housekeeping" turn that said
+  *"this job is at 214 Maple Ct…"* without the job id made the foreman write the technician's name to
+  a *different* job at the same address; the write-gate refused it as a contradiction — which is the
+  gate doing its job, but the fix was in the prompt: every seeded turn now starts with `Job <ID>:`.
+- **Vertex Dynamic Shared Quota answers bursts with 429, and the default client gives up in 2 tries.**
+  Seeding seven visits back-to-back produced `RESOURCE_EXHAUSTED` inside both the verifier and the
+  agents' own model calls (surfacing as HTTP 500 from `/run`). Every agent's `Gemini` model now
+  carries `HttpRetryOptions(attempts=6, initial_delay=2, max_delay=30)`, the verifier retries the
+  same statuses, and the fleet's Cloud Run request timeout is 600 s so a throttled two-turn run
+  finishes instead of 504-ing.
 
 ## Run it yourself
 
@@ -235,7 +271,17 @@ adk api_server foreman_app --otel_to_cloud
 cd dashboard && pip install -r requirements.txt
 FOREMAN_DB_URL=... GOOGLE_CLOUD_PROJECT=<your-gcp-project> \
   uvicorn main:app --host 0.0.0.0 --port 8080
+# office seat: http://localhost:8080/   technician seat: http://localhost:8080/tech
 ```
+
+### Seed the sample workspace (through the fleet, never by SQL)
+```bash
+python -m scripts.seed_workspace --dry-run      # prints the 7 visits
+python -m scripts.seed_workspace --run --db-url postgresql://...   # POSTs each visit to /run
+```
+Each visit is a real intake (photo from `scripts/seed_assets/` + technician notes); the foreman records
+the facts with source tags and the gate verifies them. Re-running skips jobs that already carry a
+`property` fact; `--force` re-seeds one.
 
 ### Run the A2A closer service locally
 ```bash
@@ -258,9 +304,11 @@ createdb foreman_core_test
 pytest tests/ -m "not integration"        # unit-level, local Postgres, no live Gemini calls
 pytest tests/ -m integration              # live Vertex AI calls (verifier, multimodal intake, e2e)
 ```
-62 unit tests across 14 files cover the write-gate's guards and fail-closed behavior, bi-temporal
-memory, semantic recall, the deterministic closeout builder, the A2A agent card, and the
-dashboard's `/doc` and `/api/closeout` endpoints.
+80 unit tests (90 with the integration-marked live tests) across 19 files cover the write-gate's
+guards and fail-closed behavior, the verifier's transient-error retry, bi-temporal memory, semantic
+recall, the deterministic closeout builder, the A2A agent card, the workspace derivation
+(properties, briefing, open questions, equipment, visits), the office/technician endpoints, the
+phone intake endpoint, and the seed plan.
 
 ## Project structure
 
@@ -281,8 +329,10 @@ foreman_app/
     schema.sql                   # agents / gate_journal / memory_facts
     tools.py                      # agent-facing tool factories
 dashboard/
-  main.py                # read-only ops console (FastAPI)
-  static/index.html       # control-room SPA
+  main.py                # FastAPI: office + technician seats, workspace APIs, guarded demo/intake
+  workspace.py            # properties/briefing/open-questions/equipment/visits derived from facts
+  static/app/             # office seat (vanilla JS, hash routes: properties → record → job → ledger)
+  static/tech/            # technician seat (phone: briefing → photo+voice capture → result)
 glass_bridge/              # Mentra Live glasses → fleet intake (Bun, @mentra/sdk) → foreman-glass
   src/index.ts            # AppServer: single-shutter photo, voice commands, submit, speak-back
   src/job.ts              # in-memory job, /run payload, deterministic spoken rendering
@@ -299,8 +349,10 @@ scripts/
   deploy_glass_bridge.sh   # deploys foreman-glass (min-instances 1: long-lived glasses session)
   deploy_live_brain.sh     # deploys foreman-brain (auth-only, called by the bridge)
   backfill_embeddings.py   # one-off: embed pre-existing facts
+  seed_workspace.py        # seeds the sample workspace through the real fleet (idempotent)
+  seed_assets/             # two sample nameplate photos (generated, clearly samples)
 docs/stack/                # verified cheat-sheets for the underlying Google stack
-tests/                     # 14 files, unit + integration
+tests/                     # 19 files, unit + integration
 ```
 
 ## Honest limitations
