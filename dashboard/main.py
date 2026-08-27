@@ -235,7 +235,7 @@ DEMO_APP = "foreman_app"
 DEMO_USER = "judge-demo"
 DEMO_COOLDOWN_S = 90          # min seconds between demo starts
 DEMO_DAILY_CAP = 60           # hard stop per UTC day (LLM-burn guard)
-DEMO_TIMEOUT_S = 150
+DEMO_TIMEOUT_S = 600          # Vertex DSQ throttling + backoff: a two-turn run can take minutes
 
 # The judge's one-click scenario, two turns in one ADK session.
 # Turn 1: a normal intake — the facts come off the nameplate photo, approved.
