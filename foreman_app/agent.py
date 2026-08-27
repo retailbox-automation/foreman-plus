@@ -1,5 +1,7 @@
 """Foreman+ fleet: root agent + estimator + closer, with gated shared memory."""
 from google.adk.agents import Agent
+from google.adk.models.google_llm import Gemini
+from google.genai import types
 
 from . import runtime
 from .foreman_core.tools import (
@@ -9,6 +11,17 @@ from .foreman_core.tools import (
 )
 
 MODEL = "gemini-3.7-flash"
+
+# Vertex Dynamic Shared Quota answers bursts with 429 RESOURCE_EXHAUSTED; the
+# google-genai default (2 attempts, 1 s) surfaced as HTTP 500 from /run during
+# the 2026-08-27 workspace seed. Retry transient statuses with real backoff.
+RETRY = types.HttpRetryOptions(attempts=6, initial_delay=2.0, max_delay=30.0,
+                               exp_base=2.0, jitter=0.2,
+                               http_status_codes=[429, 500, 502, 503, 504])
+
+
+def llm() -> Gemini:
+    return Gemini(model=MODEL, retry_options=RETRY)
 
 
 def _tools_for(agent_name: str):
@@ -48,7 +61,7 @@ async def close_out_job(job_id: str) -> dict:
 
 estimator = Agent(
     name="estimator",
-    model=MODEL,
+    model=llm(),
     description="Estimates repair scope and cost for home equipment problems.",
     instruction=(
         "You are the estimator agent of a repair fleet. When asked about a job "
@@ -65,7 +78,7 @@ estimator = Agent(
 
 closer = Agent(
     name="closer",
-    model=MODEL,
+    model=llm(),
     description="Closes a job into a verified client-facing document; briefs "
                 "the next person from fleet memory.",
     instruction=(
@@ -87,7 +100,7 @@ closer = Agent(
 
 root_agent = Agent(
     name="foreman",
-    model=MODEL,
+    model=llm(),
     description="Foreman: intake of repair requests, routing to specialist agents.",
     instruction=(
         "You are the foreman of a repair fleet. Every intake names a job \"Job <ID>\" "

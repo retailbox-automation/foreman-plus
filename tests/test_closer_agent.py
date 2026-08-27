@@ -67,3 +67,13 @@ def test_fleet_has_closer_agent_with_closeout_tool():
     assert "lookup_facts" in tool_names
     # closer is a registered fleet identity (gate rejects unknown agents)
     assert any(name == "closer" for name, _ in runtime.FLEET)
+
+
+
+def test_all_fleet_agents_retry_transient_vertex_errors():
+    from foreman_app.agent import root_agent, estimator, closer
+    for a in (root_agent, estimator, closer):
+        ro = a.model.retry_options
+        assert a.model.model == "gemini-3.7-flash"
+        assert ro is not None and ro.attempts >= 5 and ro.max_delay >= 20
+        assert 429 in ro.http_status_codes and 503 in ro.http_status_codes
