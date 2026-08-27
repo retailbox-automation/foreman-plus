@@ -54,15 +54,21 @@ def make_closeout_tool(store: MemoryStore):
 def make_memory_tools(agent_name: str, store: MemoryStore, gate: WriteGate):
     """Returns (memory_write, memory_search) bound to one agent's identity."""
 
-    async def memory_write(subject: str, predicate: str, value: Any) -> dict:
-        """Propose writing one fact to shared memory. The write-gate verifies it
+    async def memory_write(subject: str, predicate: str, value: Any,
+                           source: str | None = None) -> dict:
+        """Propose writing one fact to shared memory. `source` says where the
+        value came from ("nameplate photo", "technician voice", "homeowner
+        statement", "plate unreadable"). The write-gate verifies the proposal
         against existing facts; the outcome (approved/rejected + reason) is returned."""
+        obj: dict[str, Any] = {"value": value}
+        if isinstance(source, str) and source.strip():
+            obj["source"] = source.strip()
         try:
             entry = await gate.submit(
                 Proposal(
                     subject=subject,
                     predicate=predicate,
-                    object={"value": value},
+                    object=obj,
                     proposed_by=agent_name,
                 )
             )

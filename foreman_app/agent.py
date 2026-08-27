@@ -12,12 +12,14 @@ MODEL = "gemini-3.7-flash"
 
 
 def _tools_for(agent_name: str):
-    async def record_fact(subject: str, predicate: str, value: str) -> dict:
-        """Record one fact into shared fleet memory. The write-gate verifies it
+    async def record_fact(subject: str, predicate: str, value: str, source: str = "") -> dict:
+        """Record one fact into shared fleet memory. `source` = where the value
+        came from: "nameplate photo" | "technician voice" | "homeowner statement"
+        | "plate unreadable" (for value "UNKNOWN"). The write-gate verifies it
         against existing facts; returns the verdict (approved/rejected + reason)."""
         store, gate = await runtime.get_env()
         write, _ = make_memory_tools(agent_name, store, gate)
-        return await write(subject=subject, predicate=predicate, value=value)
+        return await write(subject=subject, predicate=predicate, value=value, source=source)
 
     async def lookup_facts(subject: str) -> dict:
         """Read all current facts about a subject from shared fleet memory."""

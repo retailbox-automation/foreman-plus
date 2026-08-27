@@ -1,4 +1,6 @@
 """Agent-facing memory tools: thin, non-raising wrappers over store+gate."""
+import os
+
 import pytest
 import pytest_asyncio
 
@@ -7,7 +9,7 @@ from foreman_app.foreman_core.memory import MemoryStore
 from foreman_app.foreman_core.gate import WriteGate, Verdict
 from foreman_app.foreman_core.tools import make_memory_tools
 
-DB_URL = "postgresql://oskolamicheal@localhost:5432/foreman_core_test"
+DB_URL = os.environ.get("FOREMAN_TEST_DB_URL", "postgresql://oskolamicheal@localhost:5432/foreman_core_test")
 
 
 class ApproveAll:
@@ -51,3 +53,21 @@ async def test_rejected_write_reports_reason_and_writes_nothing(env):
     assert res["verdict"] == "rejected"
     assert "contradicts" in res["reason"]
     assert (await search(subject="job:1"))["facts"] == []
+
+
+@pytest.mark.asyncio
+async def test_memory_write_stores_source_tag(env):
+    write, search = make_memory_tools("intake", env, WriteGate(env, ApproveAll()))
+    res = await write(subject="job:J-SRC", predicate="manufacture_date",
+                       value="05/2004", source="nameplate photo")
+    assert res["verdict"] == "approved"
+    facts = await env.current_facts("job:J-SRC")
+    assert facts[0]["object"] == {"value": "05/2004", "source": "nameplate photo"}
+
+
+@pytest.mark.asyncio
+async def test_memory_write_without_source_is_unchanged(env):
+    write, _ = make_memory_tools("intake", env, WriteGate(env, ApproveAll()))
+    await write(subject="job:J-SRC2", predicate="issue", value="no hot water")
+    facts = await env.current_facts("job:J-SRC2")
+    assert facts[0]["object"] == {"value": "no hot water"}
