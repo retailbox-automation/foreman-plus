@@ -1,1 +1,33 @@
-<!doctype html><title>Foreman+</title><div id="app">Foreman+</div>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Foreman+ — Ridgeline Mechanical</title>
+<meta name="description" content="The property remembers, so the next technician doesn't have to.">
+<!-- Type: Inter for the interface, IBM Plex Mono for serials, ids and timestamps. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/app/app.css">
+</head>
+<body>
+<div class="shell">
+  <nav class="nav" aria-label="Workspace">
+    <a class="brand" href="#/properties"><b>Foreman+</b><span>Ridgeline Mechanical · sample workspace</span></a>
+    <div class="navlinks">
+      <a class="navlink" data-nav="properties" href="#/properties">Properties</a>
+      <a class="navlink" data-nav="jobs" href="#/jobs">Jobs</a>
+      <a class="navlink" data-nav="ledger" href="#/ledger">Ledger</a>
+    </div>
+    <div class="navright">
+      <button class="btn pri" id="navRun" type="button"><span class="dot"></span>Run the demo</button>
+      <a class="phonelink" href="/tech">Open on a phone → /tech</a>
+    </div>
+  </nav>
+</div>
+<main id="app" tabindex="-1"></main>
+<div class="pop" id="pop" role="dialog" aria-label="Provenance" aria-modal="false"></div>
+<script src="/static/app/app.js"></script>
+</body>
+</html>
