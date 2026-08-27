@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>Foreman+ · technician seat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/tech/tech.css">
+</head>
+<body>
+<div class="frame">
+  <div class="phone" id="phone">
+    <header class="ph-bar">
+      <span class="ph-brand"><b>Foreman+</b><span>technician seat</span></span>
+      <span class="ph-step" id="phStep" aria-live="polite">Before visit</span>
+    </header>
+    <div class="ph-head" id="phHead"></div>
+    <main class="ph-body" id="phBody" tabindex="-1"></main>
+    <footer class="ph-foot" id="phFoot"></footer>
+  </div>
+</div>
+
+<!-- The real camera input. It lives outside the re-rendered region so a picked
+     photo survives a screen re-render; the shutter button opens it. -->
+<input type="file" id="photoInput" accept="image/*" capture="environment" class="offscreen">
+
+<p class="framenote">The technician seat, at phone size. On a phone it fills the screen — same three steps, one shutter, one microphone.</p>
+
+<script src="/static/tech/tech.js" defer></script>
+</body>
+</html>
