@@ -37,3 +37,11 @@ def test_job_page_shows_gate_and_recall_without_a_click():
     js = (REPO / "dashboard/static/app/app.js").read_text()
     assert '<details class="gate" open>' in js
     assert "No similar case on record yet" in js
+
+
+def test_provenance_opens_a_modal_not_a_popover():
+    html = (REPO / "dashboard/static/app/index.html").read_text()
+    js = (REPO / "dashboard/static/app/app.js").read_text()
+    css = (REPO / "dashboard/static/app/app.css").read_text()
+    assert 'id="modal"' in html and 'aria-modal="true"' in html
+    assert "function evidence(" in js and ".modal" in css and "Passed the write-gate as entry" in js

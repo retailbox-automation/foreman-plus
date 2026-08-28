@@ -87,43 +87,39 @@ function chip(f) {
          `${esc(f.source)}${when ? ' · ' + esc(when) : ''}</button>`;
 }
 
-const pop = () => document.getElementById('pop');
-function popover(f, anchor) {
-  const el = pop();
+const modalEl = () => document.getElementById('modal');
+function evidence(f) {
   const src = String(f.source || '');
   let media = '';
   if (/^nameplate/i.test(src)) {
-    media = `<h4>Source frame</h4><img class="crop" src="${NAMEPLATE}" ` +
-            `alt="The nameplate photo this value was read from">`;
+    media = `<figure class="ev-media"><img src="${NAMEPLATE}" alt="The nameplate photo this value was read from">
+      <figcaption>Nameplate photo · the model read this field from the image, not from the technician's words</figcaption></figure>`;
   } else if (/voice|homeowner/i.test(src)) {
-    media = `<h4>${/homeowner/i.test(src) ? 'Homeowner, on site' : 'Spoken on site'}</h4>` +
-            `<p class="quote">Recorded as a fact, not as audio — the recording is not kept.</p>`;
-  } else if (/recall/i.test(src)) {
-    media = '<h4>Semantic recall</h4>';
-  } else {
-    media = '<h4>Agent output</h4>';
+    media = `<p class="quote">${/homeowner/i.test(src) ? 'Said by the homeowner on site' : 'Spoken by the technician on site'} — recorded as a fact, not as audio.</p>`;
+  } else if (/write-gate/i.test(src)) {
+    media = `<p class="quote">Refused by the write-gate — the verified value stands.</p>`;
   }
-  el.innerHTML = `<button class="close" type="button" aria-label="Close">✕</button>${media}
+  const gate = f.reason
+    ? `<dt>Verifier</dt><dd>${esc(f.reason)}</dd>`
+    : (f.gate_entry_id ? `<dt>Gate</dt><dd>Passed the write-gate as entry <span class="mono">#${esc(f.gate_entry_id)}</span></dd>` : '');
+  $('#modalCard').innerHTML = `<button class="close" type="button" aria-label="Close">✕</button>
+    <div class="lab">${esc(label(f.predicate))}</div>
+    <h3>${esc(f.value != null ? f.value : (f.text || 'Unknown'))}</h3>
+    ${media}
     <dl>
       <dt>Source</dt><dd>${esc(f.source)}</dd>
       <dt>Agent</dt><dd class="mono">${esc(f.agent || '—')}</dd>
-      <dt>Gate entry</dt><dd class="mono">${f.gate_entry_id ? '#' + esc(f.gate_entry_id) : '—'}</dd>
-      <dt>Timestamp</dt><dd class="mono">${esc(stamp(f.ts) || '—')}</dd>
-      ${f.reason ? `<dt>Verifier</dt><dd>${esc(f.reason)}</dd>` : ''}
+      <dt>Recorded</dt><dd class="mono">${esc(stamp(f.ts) || '—')}</dd>
+      ${gate}
+      ${f.job_id ? `<dt>Job</dt><dd><a class="link" href="#/job/${esc(f.job_id)}">${esc(f.job_id)}</a></dd>` : ''}
     </dl>`;
-  el.classList.add('on');
-  const r = anchor.getBoundingClientRect();
-  const w = 320, h = el.offsetHeight;
-  el.style.left = Math.min(Math.max(12, r.left), window.innerWidth - w - 12) + 'px';
-  let top = r.bottom + 8;
-  if (top + h > window.innerHeight - 12) top = Math.max(12, r.top - h - 8);
-  el.style.top = top + 'px';
-  el.dataset.anchored = '1';
+  modalEl().hidden = false;
+  document.body.classList.add('modal-open');
+  $('#modalCard .close').focus();
 }
 function closePopover() {
-  const el = pop();
-  el.classList.remove('on');
-  if (el.dataset.anchored) { delete el.dataset.anchored; }
+  const m = modalEl();
+  if (!m.hidden) { m.hidden = true; document.body.classList.remove('modal-open'); }
 }
 
 /* --------------------------------------------------------------- views */
@@ -685,11 +681,9 @@ function filterRows(bodySel, key, want, emptyText, cols) {
 /* -------------------------------------------------------- interactions */
 document.addEventListener('click', e => {
   const provBtn = e.target.closest('[data-prov]');
-  if (provBtn) { e.preventDefault(); popover(PROV[+provBtn.dataset.prov], provBtn); return; }
-  if (e.target.closest('#pop')) {
-    if (e.target.closest('.close')) closePopover();
-    return;
-  }
+  if (provBtn) { e.preventDefault(); evidence(PROV[+provBtn.dataset.prov]); return; }
+  if (e.target.closest('#modalCard')) { if (e.target.closest('.close')) closePopover(); return; }
+  if (e.target.closest('#modal')) { closePopover(); return; }
   closePopover();
 
   const run = e.target.closest('[data-run]');
@@ -717,6 +711,5 @@ document.addEventListener('click', e => {
 });
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closePopover(); });
-window.addEventListener('scroll', closePopover, true);
 window.addEventListener('hashchange', route);
 route();
