@@ -31,3 +31,9 @@ def test_tech_app_files_exist_and_reference_capture_apis():
     for token in ["MediaRecorder", "/api/intake", "/api/intake/status", "/api/property/",
                   "/api/job/", "FormData"]:
         assert token in js
+
+
+def test_job_page_shows_gate_and_recall_without_a_click():
+    js = (REPO / "dashboard/static/app/app.js").read_text()
+    assert '<details class="gate" open>' in js
+    assert "No similar case on record yet" in js

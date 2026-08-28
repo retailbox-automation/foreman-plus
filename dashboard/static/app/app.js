@@ -375,7 +375,7 @@ async function job(id) {
   };
   const facts = d.facts || {};
   const similar = (d.similar || []).map(s => `
-    <a class="rc" href="#/job/${esc(s.job_id)}"><span class="score">${esc(s.score)}</span>
+    <a class="rc" href="#/job/${esc(s.job_id)}"><span class="score">${esc(Math.round((s.score || 0) * 100))}%</span>
       <b>${esc(s.job_id)}</b><p>${esc(s.value)}</p></a>`).join('');
   const journal = (d.journal || []).map(j => {
     const prop = j.proposal || {};
@@ -392,6 +392,11 @@ async function job(id) {
       <td class="nw">${pill(verdict)}</td>
       <td class="dim">${esc(j.reason)}</td></tr>`;
   }).join('');
+  const similarBlock = `<div class="block">
+      <div class="block-h"><h2 class="lab">Similar past cases in the company</h2>
+        <span class="count">semantic recall across all jobs — not this property</span></div>
+      ${similar ? `<div class="recall">${similar}</div>`
+                : '<div class="oq-empty">No similar case on record yet — recall runs on the issue text once other jobs carry embeddings.</div>'}</div>`;
 
   return el(`<div class="page">
     <div class="crumb"><a href="#/properties">Properties</a><span aria-hidden="true">›</span>
@@ -408,11 +413,8 @@ async function job(id) {
     ${group('Money', facts.money, 'three entities, kept apart')}
     ${group('Deferred findings', facts.deferred, 'noticed, not repaired')}
     ${group('Other', facts.other, '')}
-    ${similar ? `<div class="block">
-      <div class="block-h"><h2 class="lab">Similar past cases in the company</h2>
-        <span class="count">semantic recall across all jobs — not this property</span></div>
-      <div class="recall">${similar}</div></div>` : ''}
-    ${journal ? `<div class="block"><details class="gate">
+    ${similarBlock}
+    ${journal ? `<div class="block"><details class="gate" open>
       <summary>Gate decisions for this job (${(d.journal || []).length})</summary>
       <div class="tw"><table class="wide"><thead><tr><th>#</th><th>Time (UTC)</th><th>Agent</th>
         <th>Predicate</th><th>Value</th><th>Verdict</th><th>Reason</th></tr></thead>
