@@ -10,6 +10,7 @@ input is hardcoded server-side — the public page cannot feed the LLM.
 import asyncio
 import base64
 import json
+import logging
 import os
 import time
 from contextlib import asynccontextmanager
@@ -18,6 +19,8 @@ from pathlib import Path
 import asyncpg
 from fastapi import FastAPI
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+
+log = logging.getLogger("foreman.dash")
 
 try:  # container: foreman_core is vendored next to main.py at deploy time
     from foreman_core.closeout import (
@@ -178,22 +181,36 @@ async def api_property(prop_id: str):
     return JSONResponse(d)
 
 
+def _embedder_factory():
+    try:
+        from foreman_core.embedder import GeminiEmbedder
+    except ImportError:
+        from foreman_app.foreman_core.embedder import GeminiEmbedder
+    return GeminiEmbedder()
+
+
+def _embedder_configured() -> bool:
+    return (os.environ.get("GOOGLE_GENAI_USE_VERTEXAI", "").lower() in ("1", "true", "yes")
+            or bool(os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")))
+
+
 async def _similar(store: MemoryStore, job_id: str, facts: list[dict]) -> list[dict]:
     issue = next((f["object"].get("value") for f in facts
                   if f["subject"] == f"job:{job_id}" and f["predicate"] == "issue"), None)
     if not issue:
         return []
+    if not _embedder_configured():
+        log.warning("similar recall disabled: no GOOGLE_GENAI_USE_VERTEXAI and no API key")
+        return []
     try:
-        try:
-            from foreman_core.embedder import GeminiEmbedder
-        except ImportError:
-            from foreman_app.foreman_core.embedder import GeminiEmbedder
-        qvec = await asyncio.wait_for(GeminiEmbedder().embed(str(issue), kind="query"), timeout=3.0)
+        emb = _embedder_factory()
+        qvec = await asyncio.wait_for(emb.embed(str(issue), kind="query"), timeout=6.0)
         hits = await asyncio.wait_for(store.recall(qvec, top_k=6), timeout=3.0)
         return [{"job_id": h["subject"].split(":", 1)[-1], "predicate": h["predicate"],
                  "value": h["object"].get("value"), "score": round(h["score"], 2)}
                 for h in hits if h["subject"] != f"job:{job_id}"][:3]
-    except Exception:
+    except Exception as e:  # best-effort by contract, but never silent
+        log.warning("similar recall unavailable for %s: %r", job_id, e)
         return []
 
 

@@ -6,8 +6,9 @@
 # foreman_core directly. The vendored copy is gitignored — this script is the
 # only thing that produces it.
 #
-# Env vars (FOREMAN_DB_URL, GOOGLE_CLOUD_PROJECT) persist from the previous
-# revision — this script never carries secrets.
+# FOREMAN_DB_URL / GOOGLE_CLOUD_PROJECT persist from the previous revision (this
+# script never carries secrets). The Vertex switch is set explicitly on every
+# deploy because a 20.08 redeploy silently dropped it and recall went dark.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -22,6 +23,7 @@ gcloud run deploy foreman-dash \
   --account "$ACCOUNT" \
   --allow-unauthenticated \
   --add-cloudsql-instances foreman-hackathon:us-central1:foreman-pg \
+  --update-env-vars GOOGLE_GENAI_USE_VERTEXAI=TRUE,GOOGLE_CLOUD_LOCATION=global \
   --max-instances 1
 
 # adk/gcloud can exit 0 on a failed rollout — verify the serving revision
