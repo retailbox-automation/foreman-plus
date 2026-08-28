@@ -4,3 +4,4 @@ asyncpg
 google-cloud-firestore
 httpx
 python-multipart>=0.0.9
+google-genai
