@@ -179,3 +179,13 @@ def test_ledger_refusals_pairs_rejection_with_the_fact_that_stands():
     assert r["reason"].startswith("The proposed manufacture date contradicts")
     assert r["stands"]["value"] == "05/2004" and r["stands"]["source"] == "nameplate photo"
     assert r["stands"]["gate_entry_id"] == 104
+
+
+from dashboard.workspace import run_summary
+
+
+def test_run_summary_counts_and_names_the_refusal():
+    s = run_summary("J1", JOURNAL)
+    assert s["approved"] == 5 and s["rejected"] == 1      # verifier-error row excluded
+    assert s["refusal"]["predicate"] == "manufacture_date" and s["refusal"]["proposed"] == "2022"
+    assert run_summary("J-none", JOURNAL)["approved"] == 0 and run_summary("J-none", JOURNAL)["refusal"] is None

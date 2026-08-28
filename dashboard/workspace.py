@@ -356,3 +356,16 @@ def ledger_refusals(journal: list[dict], facts: list[dict]) -> list[dict]:
                     "stands": ({"value": _val(cur["object"]), "gate_entry_id": cur.get("gate_entry_id"),
                                 "source": _src(cur["object"])} if cur else None)})
     return out
+
+
+def run_summary(job_id: str, journal: list[dict]) -> dict:
+    """Recap of one fleet run: how many proposals, how many the gate approved
+    or refused, and — if it refused one — which fact it protected and why."""
+    rows = [r for r in _job_rows(journal, job_id) if _real(r)]
+    rej = [r for r in rows if r["verdict"] == "rejected"]
+    first = rej[0]["proposal"] if rej else None
+    return {"job_id": job_id, "facts": len(rows),
+            "approved": sum(1 for r in rows if r["verdict"] == "approved"),
+            "rejected": len(rej),
+            "refusal": ({"predicate": first["predicate"], "label": label(first["predicate"]),
+                         "proposed": _val(first["object"]), "reason": rej[0]["reason"]} if rej else None)}

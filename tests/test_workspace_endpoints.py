@@ -89,3 +89,5 @@ async def test_properties_property_and_job_endpoints(seeded):
             r = await c.get("/tech"); assert r.status_code == 200
             r = await c.get("/api/state"); assert r.status_code == 200
             assert isinstance(r.json()["refusals"], list)
+            r = await c.get("/api/demo/status"); assert r.status_code == 200
+            assert "summary" in r.json()

@@ -105,6 +105,14 @@ h1,h2,h3{margin:0;font-family:var(--f-ui);font-weight:600;letter-spacing:-0.02em
 .modal-card dd{margin:0;overflow-wrap:anywhere}
 body.modal-open{overflow:hidden}
 
+/* run recap: the "what just happened" modal shown when a demo run finishes */
+.recap-stats{display:flex;gap:18px;flex-wrap:wrap;margin:8px 0 14px;font-size:var(--fs-sm);color:var(--tx2)}
+.recap-stats b{display:block;font-size:var(--fs-xl);color:var(--tx);font-family:var(--f-mono);font-weight:500}
+.recap-stats .warn b{color:var(--warn-tx)}
+.recap-line{margin:0 0 10px;font-size:var(--fs);line-height:1.5}
+.recap-line s{color:var(--warn-tx)}
+.recap-act{display:flex;gap:8px;margin-top:16px}
+
 /* briefing */
 .brief{list-style:none;margin:0;padding:0}
 .brief li{padding:11px 0;border-bottom:1px solid var(--line);font-size:var(--fs);line-height:1.55;max-width:74ch}

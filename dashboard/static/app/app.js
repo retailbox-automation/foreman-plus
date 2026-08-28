@@ -122,6 +122,25 @@ function closePopover() {
   if (!m.hidden) { m.hidden = true; document.body.classList.remove('modal-open'); }
 }
 
+function recap(st) {
+  const s = st && st.summary;
+  if (!s) return;
+  const ref = s.refusal
+    ? `<p class="recap-line">The gate refused <b>${esc(s.refusal.label)} = <s>${esc(s.refusal.proposed)}</s></b> — “${esc(s.refusal.reason)}”</p>`
+    : `<p class="recap-line">Every proposal cleared the gate this time.</p>`;
+  $('#modalCard').innerHTML = `<button class="close" type="button" aria-label="Close">✕</button>
+    <div class="lab">Run complete · <span class="mono">${esc(s.job_id)}</span></div>
+    <div class="recap-stats">
+      <span><b>${esc(s.facts)}</b> proposals</span><span><b>${esc(s.approved)}</b> approved</span>
+      <span class="${s.rejected ? 'warn' : ''}"><b>${esc(s.rejected)}</b> refused</span>
+      <span><b>${esc(s.elapsed != null ? s.elapsed + 's' : '—')}</b> fleet time</span></div>
+    ${ref}
+    <p class="recap-line dim">${esc(st.reply || '')}</p>
+    <div class="recap-act"><button class="btn pri" type="button" data-close>See the property record</button>
+      <a class="btn" href="#/ledger">Open the ledger</a></div>`;
+  modalEl().hidden = false; document.body.classList.add('modal-open');
+}
+
 /* --------------------------------------------------------------- views */
 function el(html) {
   const d = document.createElement('div');
@@ -623,6 +642,7 @@ async function runDemo(propId) {
       ? (st.error || 'the run failed — the record is unchanged')
       : (st && st.reply) || 'done — the property record was updated';
     finish(st && st.status === 'error' ? 'warn' : 'done', message);
+    if (st && st.status === 'done') recap(st);
     await rerenderProperty(id, before, message, st && st.status === 'error');
   };
   setTimeout(poll, 1500);
@@ -682,7 +702,7 @@ function filterRows(bodySel, key, want, emptyText, cols) {
 document.addEventListener('click', e => {
   const provBtn = e.target.closest('[data-prov]');
   if (provBtn) { e.preventDefault(); evidence(PROV[+provBtn.dataset.prov]); return; }
-  if (e.target.closest('#modalCard')) { if (e.target.closest('.close')) closePopover(); return; }
+  if (e.target.closest('#modalCard')) { if (e.target.closest('.close') || e.target.closest('[data-close]')) closePopover(); return; }
   if (e.target.closest('#modal')) { closePopover(); return; }
   closePopover();
 

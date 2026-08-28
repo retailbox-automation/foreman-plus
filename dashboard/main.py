@@ -36,9 +36,9 @@ except ImportError:  # local dev / tests: repo root on sys.path
     from foreman_app.foreman_core.memory import MemoryStore
 
 try:
-    from workspace import group_properties, property_detail, job_detail, ledger_refusals   # container
+    from workspace import group_properties, property_detail, job_detail, ledger_refusals, run_summary   # container
 except ImportError:
-    from dashboard.workspace import group_properties, property_detail, job_detail, ledger_refusals
+    from dashboard.workspace import group_properties, property_detail, job_detail, ledger_refusals, run_summary
 
 STATIC = Path(__file__).parent / "static"
 
@@ -392,8 +392,16 @@ async def demo_run():
 @app.get("/api/demo/status")
 async def demo_status():
     elapsed = int(time.time() - demo["started_at"]) if demo["started_at"] else None
+    summary = None
+    if demo["status"] == "done" and demo["job_id"]:
+        async with state["pool"].acquire() as conn:
+            rows = [dict(r) for r in await conn.fetch(
+                """SELECT id, proposed_by, proposal, verdict, verifier_model, reason, decided_at, created_at
+                   FROM gate_journal WHERE proposal->>'subject' = $1 ORDER BY id""", f"job:{demo['job_id']}")]
+        summary = run_summary(demo["job_id"], rows)
+        summary["elapsed"] = elapsed
     return {"job_id": demo["job_id"], "status": demo["status"],
-            "reply": demo["reply"], "error": demo["error"], "elapsed": elapsed}
+            "reply": demo["reply"], "error": demo["error"], "elapsed": elapsed, "summary": summary}
 
 
 # ------------------------------------------------------------ phone intake

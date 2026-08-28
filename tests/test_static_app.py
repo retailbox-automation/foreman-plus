@@ -45,3 +45,9 @@ def test_provenance_opens_a_modal_not_a_popover():
     css = (REPO / "dashboard/static/app/app.css").read_text()
     assert 'id="modal"' in html and 'aria-modal="true"' in html
     assert "function evidence(" in js and ".modal" in css and "Passed the write-gate as entry" in js
+
+
+def test_demo_run_shows_a_recap_when_it_finishes():
+    js = (REPO / "dashboard/static/app/app.js").read_text()
+    css = (REPO / "dashboard/static/app/app.css").read_text()
+    assert "Run complete" in js and "/api/demo/status" in js and ".recap-stats" in css
