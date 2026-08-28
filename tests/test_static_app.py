@@ -51,3 +51,10 @@ def test_demo_run_shows_a_recap_when_it_finishes():
     js = (REPO / "dashboard/static/app/app.js").read_text()
     css = (REPO / "dashboard/static/app/app.css").read_text()
     assert "Run complete" in js and "/api/demo/status" in js and ".recap-stats" in css
+
+
+def test_intro_shows_product_and_spec_strip():
+    js = (REPO / "dashboard/static/app/app.js").read_text()
+    css = (REPO / "dashboard/static/app/app.css").read_text()
+    assert "coming with submission" not in js
+    assert 'class="hero"' in js and ".spec" in css and "gemini-3.7-flash" in js and "Cloud Run" in js

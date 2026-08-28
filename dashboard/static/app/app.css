@@ -259,8 +259,14 @@ details.gate .tw{border:0;border-top:1px solid var(--line);border-radius:0}
   background-size:6px 6px;background-color:var(--surface2);border:1px solid var(--line-strong);opacity:.85}
 .qr b{display:block;font-size:var(--fs-sm)}
 .qr span{font-size:12px;color:var(--tx2)}
-.introfoot{margin-top:40px;padding-top:16px;border-top:1px solid var(--line);
-  display:flex;gap:22px;flex-wrap:wrap;font-size:12px;color:var(--tx2)}
+.intro-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center}
+.hero{margin:0}
+.hero img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:6px;border:1px solid var(--line);display:block}
+.hero figcaption{font-size:12px;color:var(--tx2);margin-top:8px;max-width:48ch}
+.spec{margin:40px 0 0;padding-top:18px;border-top:1px solid var(--line);display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px 22px;font-size:var(--fs-sm)}
+.spec dt{font-size:var(--fs-lab);letter-spacing:.06em;text-transform:uppercase;color:var(--tx2);font-weight:500;margin-bottom:3px}
+.spec dd{margin:0}
 
 /* loading / failure — never a blank page */
 .note{padding:20px 0;color:var(--tx2);font-size:var(--fs-sm)}
@@ -268,6 +274,7 @@ details.gate .tw{border:0;border-top:1px solid var(--line);border-radius:0}
 
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 @media (max-width:860px){
+  .intro-grid{grid-template-columns:1fr}
   .prow{grid-template-columns:1fr;gap:8px}
   .prow .right{align-items:flex-start;text-align:left}
   .nav{gap:10px;height:auto;padding:10px var(--pad);flex-wrap:wrap}

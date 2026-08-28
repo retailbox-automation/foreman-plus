@@ -149,32 +149,41 @@ function el(html) {
 }
 
 async function intro() {
-  let counters = null;
+  let counters = null, agents = [];
   try { counters = (await api.properties()).counters; } catch (e) { /* line degrades below */ }
-  const fleet = counters
-    ? `Gate decisions on record: ${esc(counters.total)} ` +
-      `(${esc(counters.approved)} approved · ${esc(counters.rejected)} rejected)`
-    : 'Gate decisions on record: not loaded';
+  try { agents = (await api.state()).agents || []; } catch (e) { /* strip degrades below */ }
+  const gate = counters
+    ? `${esc(counters.total)} gate decisions · ${esc(counters.rejected)} refused`
+    : 'gate decisions: not loaded';
   return el(`<section class="intro">
-    <div>
-      <div class="kicker">Foreman+ · sample workspace</div>
-      <h1>The property remembers, so the next technician doesn't have to.</h1>
-      <p class="lede">This is <b>Ridgeline Mechanical's</b> workspace — sample data, real agent output.
-      A technician photographs the nameplate and talks; Foreman+ turns that into a
-      <b>verified property record</b> you can quote from before the van leaves the driveway.
-      Every line carries where it came from, and anything the gate could not verify stays visibly unknown.</p>
-      <div class="introgrid">
-        <a class="btn pri" href="#/properties">Enter workspace</a>
-        <a class="btn" href="#">Watch the walkthrough (coming with submission)</a>
-        <a class="qr" href="/tech"><span class="qrbox" aria-hidden="true"></span>
-          <span><b>Open the technician seat</b><span>Scan or tap · /tech</span></span></a>
+    <div class="intro-grid">
+      <div>
+        <div class="kicker">Foreman+ · sample workspace</div>
+        <h1>The property remembers, so the next technician doesn't have to.</h1>
+        <p class="lede">This is <b>Ridgeline Mechanical's</b> workspace — sample data, real agent output.
+        A technician photographs the nameplate and talks; Foreman+ turns that into a
+        <b>verified property record</b> you can quote from before the van leaves the driveway —
+        every line carries where it came from, and anything the gate could not verify stays visibly unknown.</p>
+        <div class="introgrid">
+          <a class="btn pri" href="#/properties">Enter workspace</a>
+          <button class="btn" type="button" data-run="${MAPLE_ID}"><span class="dot"></span>Run the demo</button>
+          <a class="qr" href="/tech"><span class="qrbox" aria-hidden="true"></span>
+            <span><b>Open the technician seat</b><span>Scan or tap · /tech</span></span></a>
+        </div>
       </div>
-      <div class="introfoot">
-        <span>Fleet: foreman · estimator · closer</span>
-        <span>${fleet}</span>
-        <span>Model: <span class="mono">gemini-3.7-flash</span></span>
-      </div>
+      <figure class="hero">
+        <img src="${NAMEPLATE}" alt="A water-heater nameplate — the photo the fleet reads in the demo">
+        <figcaption>This nameplate is what the demo reads. Model, serial and date come from the image, not from anyone's memory.</figcaption>
+      </figure>
     </div>
+    <dl class="spec">
+      <div><dt>Fleet</dt><dd>${esc(agents.length || 3)} ADK agents · foreman, estimator, closer</dd></div>
+      <div><dt>Model</dt><dd class="mono">gemini-3.7-flash · gemini-embedding-2</dd></div>
+      <div><dt>Runs on</dt><dd>Cloud Run · Cloud SQL + pgvector · Firestore · Vertex AI</dd></div>
+      <div><dt>Gate</dt><dd>${gate}</dd></div>
+      <div><dt>Hand-off</dt><dd>A2A agent card · closeout documents</dd></div>
+      <div><dt>License</dt><dd>MIT</dd></div>
+    </dl>
   </section>`);
 }
 
