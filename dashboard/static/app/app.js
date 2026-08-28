@@ -470,10 +470,27 @@ async function ledger() {
       <td class="nw">${pill(r.verdict)}</td>
       <td class="dim">${esc(r.reason)}</td></tr>`;
   }).join('');
+  const refusals = (s.refusals || []).map(r => `
+    <article class="refusal" data-verdict="rejected">
+      <div class="refusal-h">${pill('rejected')}
+        <span class="dim">${esc(r.agent)} proposed for <a class="link" href="#/job/${esc(r.job_id)}">${esc(r.job_id)}</a> · ${esc(stamp(r.decided_at))} · gate entry <span class="mono">#${esc(r.id)}</span></span></div>
+      <div class="refusal-body">
+        <div class="strike"><span class="lab">${esc(r.label)}</span> <s>${esc(r.proposed)}</s></div>
+        <blockquote class="verdict">${esc(r.reason)}</blockquote>
+        ${r.stands ? `<div class="stands"><span class="lab">Stands</span> <b>${esc(r.stands.value)}</b>${
+          r.stands.source ? ` <span class="chip" aria-hidden="true">${esc(r.stands.source)}</span>` : ''}${
+          r.stands.gate_entry_id ? ` <span class="dim mono">#${esc(r.stands.gate_entry_id)}</span>` : ''}</div>` : ''}
+      </div>
+    </article>`).join('');
   return el(`<div class="page wide">
     <div class="pagehead"><div><h1>Ledger</h1>
       <div class="sub">Every write the fleet attempted, and what the verifier said about it.
         ${esc(c.total || 0)} decisions on record · ${esc(c.approved || 0)} approved · ${esc(c.rejected || 0)} rejected.</div></div></div>
+    <div class="block" id="blk-refusals">
+      <div class="block-h"><h2 class="lab">What the gate refused</h2>
+        <span class="count">${esc((s.refusals || []).length)} refusal${(s.refusals || []).length === 1 ? '' : 's'} · the record kept the verified value each time</span></div>
+      <div class="refusals">${refusals || '<div class="oq-empty">No refusals on record yet.</div>'}</div>
+    </div>
     <div class="tabs" id="ledTabs">
       ${['All', 'Approved', 'Rejected'].map((t, i) =>
         `<button class="tab" type="button" data-ltab="${t}" aria-pressed="${i === 0}">${t}</button>`).join('')}

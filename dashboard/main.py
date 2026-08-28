@@ -36,9 +36,9 @@ except ImportError:  # local dev / tests: repo root on sys.path
     from foreman_app.foreman_core.memory import MemoryStore
 
 try:
-    from workspace import group_properties, property_detail, job_detail   # container
+    from workspace import group_properties, property_detail, job_detail, ledger_refusals   # container
 except ImportError:
-    from dashboard.workspace import group_properties, property_detail, job_detail
+    from dashboard.workspace import group_properties, property_detail, job_detail, ledger_refusals
 
 STATIC = Path(__file__).parent / "static"
 
@@ -93,6 +93,12 @@ async def api_state():
                       count(*) FILTER (WHERE verdict='rejected') AS rejected,
                       count(*) AS total FROM gate_journal
                WHERE reason IS NULL OR reason NOT LIKE 'verifier error:%'""")))
+        all_journal = [dict(r) for r in await conn.fetch(
+            """SELECT id, proposed_by, proposal, verdict, verifier_model, reason, decided_at, created_at
+               FROM gate_journal WHERE verdict='rejected' ORDER BY id DESC""")]
+        all_facts = [dict(r) for r in await conn.fetch(
+            """SELECT id, subject, predicate, object, source_agent, valid_from, valid_to, ingested_at
+               FROM memory_facts WHERE valid_to IS NULL ORDER BY id""")]
 
     jobs: dict[str, list] = {}
     for f in facts:
@@ -144,6 +150,7 @@ async def api_state():
         "jobs": [{"subject": s, "facts": fs} for s, fs in jobs.items()],
         "activity": activity,
         "counters": {k: int(v) for k, v in counters.items()},
+        "refusals": ledger_refusals(all_journal, all_facts),
     })
 
 

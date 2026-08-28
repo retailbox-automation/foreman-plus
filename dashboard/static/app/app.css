@@ -265,3 +265,14 @@ details.gate .tw{border:0;border-top:1px solid var(--line);border-radius:0}
   .navright{margin-left:0}
   .actions{margin-left:0}
 }
+
+/* refusals: the one case shown large, the way a judge reads it */
+.refusals{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:12px}
+.refusal{border:1px solid var(--line);border-left:3px solid var(--warn-tx);border-radius:var(--r);background:var(--surface);padding:14px 16px}
+.refusal-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;margin-bottom:10px}
+.refusal .strike{font-size:var(--fs);margin-bottom:8px}
+.refusal .strike s{color:var(--warn-tx);text-decoration-thickness:2px}
+.refusal .verdict{margin:0 0 10px;padding:8px 12px;background:var(--warn-bg);border-radius:3px;
+  font-size:var(--fs-sm);color:var(--warn-tx);line-height:1.45}
+.refusal .stands{font-size:var(--fs-sm)}
+.refusal .stands b{color:var(--ok-tx)}

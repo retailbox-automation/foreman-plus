@@ -165,3 +165,17 @@ def test_job_detail_money_values_are_strings():
     for row in d["facts"]["money"]:
         assert isinstance(row["value"], str), row
     assert d["facts"]["money"][1]["value"] == "$99 · credited toward repair: yes"
+
+
+from dashboard.workspace import ledger_refusals
+
+
+def test_ledger_refusals_pairs_rejection_with_the_fact_that_stands():
+    out = ledger_refusals(JOURNAL, FACTS)
+    assert [r["id"] for r in out] == [108]            # verifier-error row 110 excluded
+    r = out[0]
+    assert r["job_id"] == "J1" and r["predicate"] == "manufacture_date"
+    assert r["proposed"] == "2022" and r["agent"] == "estimator"
+    assert r["reason"].startswith("The proposed manufacture date contradicts")
+    assert r["stands"]["value"] == "05/2004" and r["stands"]["source"] == "nameplate photo"
+    assert r["stands"]["gate_entry_id"] == 104

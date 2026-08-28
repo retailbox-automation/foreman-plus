@@ -336,3 +336,23 @@ def job_detail(job_id: str, facts: list[dict], journal: list[dict], closeout: di
                      "predicate": r["proposal"].get("predicate"), "value": _val(r["proposal"].get("object")),
                      "reason": r["reason"], "model": r["verifier_model"], "decided_at": _iso(r["decided_at"])} for r in rows]
     return {"job_id": job_id, "property": prop, "facts": groups, "journal": journal_view, "closeout": closeout}
+
+
+def ledger_refusals(journal: list[dict], facts: list[dict]) -> list[dict]:
+    """Every real refusal, newest first, next to the fact that still stands."""
+    linked = link_gate_entries(facts, journal)
+    by_job = _by_job(linked)
+    out = []
+    for r in sorted(journal, key=lambda r: r["id"], reverse=True):
+        if r["verdict"] != "rejected" or not _real(r):
+            continue
+        p = r["proposal"]
+        job = _job(p["subject"])
+        cur = _latest(by_job.get(job, []), p["predicate"])
+        out.append({"id": r["id"], "job_id": job, "agent": r["proposed_by"],
+                    "predicate": p["predicate"], "label": label(p["predicate"]),
+                    "proposed": _val(p["object"]), "reason": r["reason"],
+                    "decided_at": _iso(r["decided_at"]),
+                    "stands": ({"value": _val(cur["object"]), "gate_entry_id": cur.get("gate_entry_id"),
+                                "source": _src(cur["object"])} if cur else None)})
+    return out

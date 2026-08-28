@@ -21,6 +21,7 @@ def test_office_app_files_exist_and_reference_routes():
         assert endpoint in js, endpoint
     assert "#2C5CD8" in css and "Inter" in html and "IBM Plex Mono" in html
     assert "digest" not in css.lower()
+    assert "What the gate refused" in js and ".refusal" in css and "refusals" in js
 
 
 def test_tech_app_files_exist_and_reference_capture_apis():
