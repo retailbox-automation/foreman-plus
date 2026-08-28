@@ -83,6 +83,7 @@ async def test_properties_property_and_job_endpoints(seeded):
             j = r.json()
             assert j["property"]["id"] == "214-maple-ct-orlando-fl-32806"
             assert j["facts"]["money"][0]["value"] == "2 h · thermostat"
+            assert all(isinstance(m["value"], str) for m in j["facts"]["money"])
             assert isinstance(j["similar"], list)
             r = await c.get("/"); assert r.status_code == 200 and "Foreman+" in r.text
             r = await c.get("/tech"); assert r.status_code == 200

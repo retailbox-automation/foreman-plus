@@ -138,3 +138,30 @@ def test_briefing_lines_start_with_a_capital_letter():
     facts = FACTS + [fact(30, "J1", "equipment_type", "electric water heater", "nameplate photo")]
     d = property_detail("214-maple-ct-orlando-fl-32806", facts, JOURNAL)
     assert d["briefing"][0]["text"].startswith("Electric water heater")
+
+
+from dashboard.workspace import money_text
+
+
+def test_money_text_flattens_closeout_dicts():
+    assert money_text("diagnostic_fee", {"typical_range": "$99–$159",
+                      "credited_toward_repair": "per company policy — set at booking"}) \
+        == "$99–$159 · credited toward repair: per company policy — set at booking"
+    assert money_text("labor", {"billable": True, "note": "Labor is billable."}) == "Billable · Labor is billable."
+    assert money_text("parts_warranty", {"status": "advisory", "registration_status": "UNKNOWN",
+                      "coverage": "5 years base parts", "confirmed_by": "manufacturer lookup"}) \
+        == "5 years base parts · registration UNKNOWN · confirmed by manufacturer lookup"
+    assert money_text("core_charge", {"applies": False, "note": "Not applicable to this scope."}) \
+        == "Not applicable to this scope."
+    assert money_text("core_charge", {"applies": True}) == "Applies"
+    assert money_text("x", {"a": 1, "b": "two"}) == "a: 1; b: two"
+    assert money_text("x", "plain") == "plain"
+
+
+def test_job_detail_money_values_are_strings():
+    closeout = {"money": {"diagnostic_fee": {"typical_range": "$99", "credited_toward_repair": "yes"},
+                          "labor": {"billable": True, "note": "n"}}}
+    d = job_detail("J1", FACTS, JOURNAL, closeout)
+    for row in d["facts"]["money"]:
+        assert isinstance(row["value"], str), row
+    assert d["facts"]["money"][1]["value"] == "$99 · credited toward repair: yes"

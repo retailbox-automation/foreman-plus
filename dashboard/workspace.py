@@ -111,6 +111,27 @@ def _estimate_text(raw: Any) -> str:
         return str(raw)
 
 
+def money_text(key: str, v: Any) -> str:
+    """Flatten a closeout money entry into one readable line. The closeout keeps
+    these as dicts (documents render them richly); the office job page shows one
+    sentence per line and must never print an object."""
+    if not isinstance(v, dict):
+        return str(v)
+    if "typical_range" in v:
+        return f"{v.get('typical_range')} · credited toward repair: {v.get('credited_toward_repair')}"
+    if "billable" in v:
+        head = "Billable" if v.get("billable") else "Not billable"
+        return f"{head} · {v['note']}" if v.get("note") else head
+    if "status" in v and "coverage" in v:
+        s = f"{v.get('coverage')} · registration {v.get('registration_status', 'UNKNOWN')}"
+        return f"{s} · confirmed by {v['confirmed_by']}" if v.get("confirmed_by") else s
+    if "applies" in v:
+        if v.get("note"):
+            return str(v["note"])
+        return "Applies" if v.get("applies") else "Not applicable"
+    return "; ".join(f"{k}: {val}" for k, val in v.items())
+
+
 def _fact_view(f: dict) -> dict:
     v = _val(f["object"])
     return {"predicate": f["predicate"], "label": label(f["predicate"]),
@@ -307,8 +328,9 @@ def job_detail(job_id: str, facts: list[dict], journal: list[dict], closeout: di
         else: groups["other"].append(view)
     if closeout and closeout.get("money"):
         for k, v in closeout["money"].items():
-            groups["money"].append({"predicate": k, "label": label(k), "value": v, "source": "closeout",
-                                    "agent": "closer", "ts": None, "gate_entry_id": None, "status": "known"})
+            groups["money"].append({"predicate": k, "label": label(k), "value": money_text(k, v),
+                                    "source": "closeout", "agent": "closer", "ts": None,
+                                    "gate_entry_id": None, "status": "known"})
     rows = sorted(_job_rows(journal, job_id), key=lambda r: r["id"], reverse=True)
     journal_view = [{"id": r["id"], "agent": r["proposed_by"], "verdict": r["verdict"],
                      "predicate": r["proposal"].get("predicate"), "value": _val(r["proposal"].get("object")),
