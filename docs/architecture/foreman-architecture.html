@@ -83,13 +83,13 @@
       <!-- ============ ZONES (bg → zones → arrows → nodes) ============ -->
       <!-- Zone: ADK Agent Fleet -->
       <rect x="224" y="168" width="268" height="228" rx="8" fill="rgba(45,49,66,0.02)" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
-      <rect x="248" y="172" width="220" height="12" rx="2" fill="#f5f5f5"/>
-      <text x="358" y="181" fill="rgba(45,49,66,0.45)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.1em">AGENT FLEET · CLOUD RUN · VERTEX AI</text>
+      <rect x="208" y="172" width="300" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="358" y="181" fill="rgba(45,49,66,0.45)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.1em">AGENT FLEET · 3 ADK AGENTS · 4 TOOLS · CLOUD RUN · VERTEX AI</text>
 
       <!-- Zone: Outputs -->
       <rect x="1072" y="168" width="168" height="264" rx="8" fill="rgba(45,49,66,0.02)" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
-      <rect x="1122" y="172" width="68" height="12" rx="2" fill="#f5f5f5"/>
-      <text x="1156" y="181" fill="rgba(45,49,66,0.45)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.12em">OUTPUTS</text>
+      <rect x="1101" y="172" width="110" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="1156" y="181" fill="rgba(45,49,66,0.45)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.12em">OUTPUTS · 2 SEATS · A2A</text>
 
       <!-- ============ ARROWS (behind nodes) ============ -->
 
@@ -107,11 +107,11 @@
       <text x="220" y="339" fill="#4f5d75" font-size="7.5" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.04em">/api/intake</text>
 
       <!-- A2 Foreman -> Estimator (internal, unlabeled — hierarchy reads from layout) -->
-      <path d="M 358,256 H 306 Q 298,256 298,264 V 320"
+      <path d="M 358,276 H 306 Q 298,276 298,284 V 320"
             fill="none" stroke="#4f5d75" stroke-width="1" marker-end="url(#arrow-muted-sm)"/>
 
       <!-- A3 Foreman -> Closer (internal, unlabeled) -->
-      <path d="M 358,256 H 410 Q 418,256 418,264 V 320"
+      <path d="M 358,276 H 410 Q 418,276 418,284 V 320"
             fill="none" stroke="#4f5d75" stroke-width="1" marker-end="url(#arrow-muted-sm)"/>
 
       <!-- A4 Foreman -> Write Gate (write; unlabeled — gate subtitle already says "every record_fact") -->
@@ -129,10 +129,10 @@
       <text x="660" y="433" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.05em">LOOKUP/RECALL</text>
 
       <!-- A7 Write Gate -> Fleet Memory (persist, same y — plain line, unlabeled — journal caption inside the gate already says this) -->
-      <line x1="864" y1="282" x2="896" y2="282" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <line x1="864" y1="282" x2="870" y2="282" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
 
       <!-- A8 Fleet Memory -> Dashboard (unlabeled — Dashboard's own "read-only" sublabel covers it) -->
-      <path d="M 1052,282 H 1070 Q 1078,282 1078,274 V 228 Q 1078,220 1086,220 H 1088"
+      <path d="M 1078,282 Q 1086,282 1086,274 V 228 Q 1086,220 1088,220"
             fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
 
       <!-- A9 Firestore -> Dashboard (same x — plain vertical line, unlabeled) -->
@@ -170,28 +170,34 @@
       <text x="116" y="413" fill="#7a8399" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.02em">photo + voice → the same /run</text>
 
       <!-- N2 Foreman (root agent) -->
-      <rect x="248" y="200" width="220" height="56" rx="6" fill="#f5f5f5"/>
-      <rect x="248" y="200" width="220" height="56" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+      <rect x="248" y="200" width="220" height="76" rx="6" fill="#f5f5f5"/>
+      <rect x="248" y="200" width="220" height="76" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
       <rect x="256" y="208" width="40" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.35)" stroke-width="0.8"/>
       <text x="276" y="217" fill="#2d3142" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">ROOT</text>
       <text x="358" y="230" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Foreman</text>
       <text x="358" y="246" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">Gemini 3.7 · routes</text>
+      <text x="358" y="258" fill="#4f5d75" font-size="7.5" font-style="italic" font-family="'Geist', sans-serif" text-anchor="middle">"Rheem 82V40-2, plate says 05/2004 —</text>
+      <text x="358" y="268" fill="#4f5d75" font-size="7.5" font-style="italic" font-family="'Geist', sans-serif" text-anchor="middle">no hot water since yesterday"</text>
 
       <!-- N3 Estimator (sub-agent) -->
-      <rect x="248" y="320" width="100" height="56" rx="6" fill="#f5f5f5"/>
-      <rect x="248" y="320" width="100" height="56" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+      <rect x="248" y="320" width="100" height="74" rx="6" fill="#f5f5f5"/>
+      <rect x="248" y="320" width="100" height="74" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
       <rect x="256" y="328" width="32" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.35)" stroke-width="0.8"/>
       <text x="272" y="337" fill="#2d3142" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">SUB</text>
       <text x="298" y="350" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Estimator</text>
       <text x="298" y="366" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">scope + parts</text>
+      <text x="298" y="378" fill="#4f5d75" font-size="7" font-style="italic" font-family="'Geist', sans-serif" text-anchor="middle">"3 h, 40-gal electric</text>
+      <text x="298" y="388" fill="#4f5d75" font-size="7" font-style="italic" font-family="'Geist', sans-serif" text-anchor="middle">unit, install kit"</text>
 
       <!-- N4 Closer (sub-agent) -->
-      <rect x="368" y="320" width="100" height="56" rx="6" fill="#f5f5f5"/>
-      <rect x="368" y="320" width="100" height="56" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+      <rect x="368" y="320" width="100" height="74" rx="6" fill="#f5f5f5"/>
+      <rect x="368" y="320" width="100" height="74" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
       <rect x="376" y="328" width="32" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.35)" stroke-width="0.8"/>
       <text x="392" y="337" fill="#2d3142" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">SUB</text>
       <text x="418" y="350" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Closer</text>
       <text x="418" y="366" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">closeout · brief</text>
+      <text x="418" y="378" fill="#4f5d75" font-size="7" font-style="italic" font-family="'Geist', sans-serif" text-anchor="middle">"brief the next tech: what stands,</text>
+      <text x="418" y="388" fill="#4f5d75" font-size="7" font-style="italic" font-family="'Geist', sans-serif" text-anchor="middle">what was refused, similar jobs"</text>
 
       <!-- N5 Write Gate (FOCAL) -->
       <rect x="524" y="168" width="340" height="228" rx="8" fill="#f5f5f5"/>
@@ -199,7 +205,7 @@
       <rect x="532" y="176" width="44" height="12" rx="2" fill="transparent" stroke="rgba(235,108,54,0.55)" stroke-width="0.8"/>
       <text x="554" y="185" fill="#eb6c36" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">GATE</text>
       <text x="694" y="202" fill="#2d3142" font-size="15" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Write Gate</text>
-      <text x="694" y="217" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">every write: fail-closed, injection-hardened</text>
+      <text x="694" y="217" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">4 checks on every write · fail-closed · injection-hardened</text>
 
       <!-- internal pipeline chips -->
       <rect x="564" y="232" width="68" height="20" rx="4" fill="#ffffff" stroke="rgba(45,49,66,0.28)" stroke-width="0.8"/>
@@ -229,13 +235,13 @@
       <text x="852" y="386" fill="#7a8399" font-size="7" font-family="'Geist Mono', monospace" text-anchor="end" letter-spacing="0.02em">OTel span write_gate.submit → Cloud Trace</text>
 
       <!-- N6 Fleet Memory (Store) -->
-      <rect x="896" y="226" width="156" height="112" rx="6" fill="#f5f5f5"/>
-      <rect x="896" y="226" width="156" height="112" rx="6" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"/>
-      <rect x="904" y="234" width="24" height="12" rx="2" fill="transparent" stroke="rgba(79,93,117,0.50)" stroke-width="0.8"/>
-      <text x="916" y="243" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">DB</text>
+      <rect x="870" y="226" width="208" height="112" rx="6" fill="#f5f5f5"/>
+      <rect x="870" y="226" width="208" height="112" rx="6" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"/>
+      <rect x="878" y="234" width="24" height="12" rx="2" fill="transparent" stroke="rgba(79,93,117,0.50)" stroke-width="0.8"/>
+      <text x="890" y="243" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">DB</text>
       <text x="974" y="264" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Fleet Memory</text>
       <text x="974" y="282" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">Cloud SQL · Postgres</text>
-      <text x="974" y="296" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">facts · gate_journal</text>
+      <text x="974" y="296" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle">facts · gate_journal · 181 decisions</text>
       <text x="974" y="310" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">pgvector HNSW · 768d</text>
       <text x="974" y="325" fill="#7a8399" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.02em">each fact carries a source tag</text>
 
@@ -265,6 +271,39 @@
       <text x="1160" y="373" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Closer service</text>
       <text x="1160" y="388" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">Cloud Run · A2A exit</text>
       <text x="1160" y="401" fill="#7a8399" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.02em">agent-card: public · JSON-RPC: X-Foreman-Key</text>
+
+      <!-- ============ BUILT WITH ============ -->
+      <text x="40" y="500" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" letter-spacing="0.16em">BUILT WITH</text>
+
+      <rect x="40" y="511" width="89" height="18" rx="3" fill="#ffffff" stroke="rgba(45,49,66,0.18)" stroke-width="0.8"/>
+      <text x="84.5" y="523" fill="#2d3142" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">Google ADK 2.7</text>
+
+      <rect x="137" y="511" width="99" height="18" rx="3" fill="#ffffff" stroke="rgba(45,49,66,0.18)" stroke-width="0.8"/>
+      <text x="186.5" y="523" fill="#2d3142" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">Gemini 3.7 Flash</text>
+
+      <rect x="244" y="511" width="110" height="18" rx="3" fill="#ffffff" stroke="rgba(45,49,66,0.18)" stroke-width="0.8"/>
+      <text x="299" y="523" fill="#2d3142" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">Gemini Embedding 2</text>
+
+      <rect x="362" y="511" width="63" height="18" rx="3" fill="#ffffff" stroke="rgba(45,49,66,0.18)" stroke-width="0.8"/>
+      <text x="393.5" y="523" fill="#2d3142" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">Vertex AI</text>
+
+      <rect x="433" y="511" width="63" height="18" rx="3" fill="#ffffff" stroke="rgba(45,49,66,0.18)" stroke-width="0.8"/>
+      <text x="464.5" y="523" fill="#2d3142" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">Cloud Run</text>
+
+      <rect x="504" y="511" width="177" height="18" rx="3" fill="#ffffff" stroke="rgba(45,49,66,0.18)" stroke-width="0.8"/>
+      <text x="592.5" y="523" fill="#2d3142" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">Cloud SQL · Postgres + pgvector</text>
+
+      <rect x="689" y="511" width="63" height="18" rx="3" fill="#ffffff" stroke="rgba(45,49,66,0.18)" stroke-width="0.8"/>
+      <text x="720.5" y="523" fill="#2d3142" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">Firestore</text>
+
+      <rect x="760" y="511" width="78" height="18" rx="3" fill="#ffffff" stroke="rgba(45,49,66,0.18)" stroke-width="0.8"/>
+      <text x="799" y="523" fill="#2d3142" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">A2A protocol</text>
+
+      <rect x="846" y="511" width="156" height="18" rx="3" fill="#ffffff" stroke="rgba(45,49,66,0.18)" stroke-width="0.8"/>
+      <text x="924" y="523" fill="#2d3142" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">OpenTelemetry → Cloud Trace</text>
+
+      <text x="40" y="580" fill="#2d3142" font-size="10" font-weight="600" font-family="'Geist', sans-serif">181 gate decisions on record · 176 approved · 5 refused — every one with a reason</text>
+      <text x="1240" y="580" fill="#7a8399" font-size="7" font-family="'Geist Mono', monospace" text-anchor="end">counters read from /api/state · 2026-08-28</text>
 
       <!-- ============ LEGEND ============ -->
       <line x1="40" y1="612" x2="1240" y2="612" stroke="rgba(45,49,66,0.12)" stroke-width="0.8"/>
