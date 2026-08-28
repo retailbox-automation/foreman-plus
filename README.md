@@ -10,6 +10,10 @@
 ![A2A](https://img.shields.io/badge/Protocol-A2A-0F9D58)
 ![MIT](https://img.shields.io/badge/license-MIT-informational)
 
+| Fleet | Model | Memory | Runs on | Gate | Tests |
+|---|---|---|---|---|---|
+| 3 ADK agents (foreman · estimator · closer) | `gemini-3.7-flash` · `gemini-embedding-2` via Vertex AI | Cloud SQL Postgres + pgvector (768) · Firestore feed | Cloud Run ×3 · A2A card | fail-closed write-gate — every decision journaled with a reason | 102 collected, non-live suite green (`pytest`) |
+
 ---
 
 ## What it does
@@ -97,6 +101,8 @@ LLM verify against existing facts → apply (fact write + journal close, one tra
 ## Architecture
 
 ![Foreman+ architecture](docs/architecture/foreman-architecture.svg)
+
+**Gallery** (live screenshots, judge order): [`docs/submission/GALLERY.md`](docs/submission/GALLERY.md) — architecture · the Ledger's "What the gate refused" · a property record with provenance chips · the evidence modal (nameplate photo + gate entry) · the "Run complete" recap of a live fleet run · the technician seat on a phone.
 
 Three ADK agents share one gated Postgres memory store and are deployed as independent services:
 
