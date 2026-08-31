@@ -12,7 +12,7 @@
 
 | Fleet | Model | Memory | Runs on | Gate | Tests |
 |---|---|---|---|---|---|
-| 3 ADK agents (foreman · estimator · closer) | `gemini-3.7-flash` · `gemini-embedding-2` via Vertex AI | Cloud SQL Postgres + pgvector (768) · Firestore feed | Cloud Run ×3 · A2A card | fail-closed write-gate — every decision journaled with a reason | 102 collected, non-live suite green (`pytest`) |
+| 3 ADK agents (foreman · estimator · closer) | `gemini-3.7-flash` · `gemini-embedding-2` · `gemma-4` · `veo-3.1` · `lyria-002` via Vertex AI | Cloud SQL Postgres + pgvector (768) · Firestore feed | Cloud Run ×3 · A2A card | fail-closed write-gate — every decision journaled with a reason | 111 collected, non-live suite green (`pytest`) |
 
 ---
 
@@ -179,7 +179,7 @@ Three ADK agents share one gated Postgres memory store and are deployed as indep
 | **Google Agent Framework** | Google **ADK** 2.7.1 — the 3-agent fleet with native `sub_agents` LLM-driven transfer, `DatabaseSessionService` for durable session state on Postgres, and `to_a2a()` to expose `closer` as its own A2A service. |
 | **Google Cloud service** | **Cloud Run** (5 services: `foreman-hello` — the fleet's ADK API server and intake target, `foreman-dash`, `foreman-closer`, `foreman-glass`, `foreman-brain`), **Cloud SQL** (Postgres + `pgvector`, HNSW cosine index — system of record for facts and the gate journal), **Firestore** (native mode — best-effort live activity feed). |
 | **Observability** | OpenTelemetry via `--otel_to_cloud` (Cloud Trace + Cloud Logging + Cloud Monitoring from one flag); the write-gate's own span nests under ADK's spans for a single per-request waterfall. |
-| **Additional Google AI model** | **Veo 3.1** was used to generate the non-application video assets (b-roll/establishing shots) for the submission demo video — it is not part of the running application. |
+| **Additional Google AI models** | **Gemma 4** (`gemma-4-26b-a4b-it`, Vertex AI serverless MaaS) — advisory triage of a property's open questions in the office seat (`dashboard/gemma_triage.py`, `GET /api/property/{id}/triage`): labels each refused claim / unknown field with a category and urgency, clearly marked advisory — it never writes memory, the gate stays deterministic. **Veo 3.1** (`veo-3.1-generate-001`) — the field-scene clip on the office intro (`scripts/generate_hero_clip.py`) plus the submission video's b-roll. **Lyria** (`lyria-002`) — the optional "while you wait" ambient loop on the demo run line (`scripts/generate_wait_track.py`); a fleet run takes minutes under Vertex throttling, so the wait got a soundtrack. |
 
 ## Implementation insights (learned the hard way)
 

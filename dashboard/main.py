@@ -40,6 +40,11 @@ try:
 except ImportError:
     from dashboard.workspace import group_properties, property_detail, job_detail, ledger_refusals, run_summary
 
+try:
+    from gemma_triage import triage_open_questions   # container
+except ImportError:
+    from dashboard.gemma_triage import triage_open_questions
+
 STATIC = Path(__file__).parent / "static"
 
 state: dict = {"pool": None, "fs": None}
@@ -186,6 +191,18 @@ async def api_property(prop_id: str):
     if d is None:
         return JSONResponse({"error": "unknown property"}, status_code=404)
     return JSONResponse(d)
+
+
+@app.get("/api/property/{prop_id}/triage")
+async def api_property_triage(prop_id: str):
+    """Advisory Gemma labels for the property's open questions — called by the
+    page AFTER first render, so a slow or absent model never delays the record.
+    The gate stays deterministic; these labels never touch memory."""
+    facts, journal, _ = await _facts_and_journal()
+    d = property_detail(prop_id, facts, journal)
+    if d is None:
+        return JSONResponse({"error": "unknown property"}, status_code=404)
+    return JSONResponse(await triage_open_questions(d["open_questions"]))
 
 
 def _embedder_factory():

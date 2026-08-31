@@ -292,3 +292,25 @@ details.gate .tw{border:0;border-top:1px solid var(--line);border-radius:0}
   font-size:var(--fs-sm);color:var(--warn-tx);line-height:1.45}
 .refusal .stands{font-size:var(--fs-sm)}
 .refusal .stands b{color:var(--ok-tx)}
+
+/* ============ bonus-model surfaces (Gemma triage · Veo strip · Lyria) ==== */
+/* Advisory Gemma labels on open questions — visually a tag, never a verdict */
+.triage{display:inline-flex;align-items:center;height:18px;padding:0 7px;border-radius:3px;
+  font-size:11px;font-weight:500;letter-spacing:.02em;background:var(--unk-bg);color:var(--unk-tx);
+  border:1px dashed var(--line-strong);cursor:help;white-space:nowrap}
+.triage.safety{background:var(--warn-bg);color:var(--warn-tx);border-color:var(--warn-tx)}
+.triage.dispute{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+
+.veo-strip{display:grid;grid-template-columns:300px 1fr;gap:20px;align-items:center;
+  margin-top:34px;padding:16px;border:1px solid var(--line);border-radius:6px;background:var(--surface2)}
+.veo-strip video{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:4px;display:block;
+  border:1px solid var(--line)}
+.veo-strip b{font-size:var(--fs-sm)}
+.veo-strip p{margin:6px 0 0;font-size:var(--fs-sm);color:var(--tx2);max-width:64ch}
+@media (max-width:720px){.veo-strip{grid-template-columns:1fr}}
+
+.sndbtn{margin-left:14px;flex:none;border:1px solid currentColor;background:transparent;
+  border-radius:3px;font-size:12px;padding:2px 8px;opacity:.85}
+.sndbtn:hover{opacity:1}
+.sndbtn[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+.runline.done .sndbtn,.runline.warn .sndbtn{display:none}
