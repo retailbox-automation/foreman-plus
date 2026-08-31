@@ -1,6 +1,6 @@
 # Foreman+
 
-**A field technician photographs the nameplate and talks — an agent fleet turns that into a verified, priced job record in ~15 seconds, and the property's memory outlives the visit and the person. Nothing becomes truth without passing a fail-closed write-gate first.**
+**A field technician photographs the nameplate and talks — an agent fleet turns that into a verified, priced job record before the truck leaves the driveway, and the property's memory outlives the visit and the person. Nothing becomes truth without passing a fail-closed write-gate first.**
 
 ![Google ADK](https://img.shields.io/badge/Google-ADK%202.7-4285F4?logo=google)
 ![Gemini 3.7 Flash](https://img.shields.io/badge/Gemini-3.7%20Flash%20on%20Vertex%20AI-8E44AD)
@@ -19,7 +19,7 @@
 ## What it does
 
 A field technician photographs the equipment nameplate and talks. Foreman+ turns that into a
-verified job record in about 15 seconds: a price the technician can quote before leaving the
+verified job record on the spot: a price the technician can quote before leaving the
 driveway, every number traceable back to "where did this come from," and the next person on the
 job — a comfort advisor, a callback tech, a home-warranty authorizer — arrives with the property's
 memory instead of starting from zero.
